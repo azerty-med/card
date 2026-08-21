@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Card Code — Extracteur & Scanner</title>
+<style>
+  :root{
+    --bg:#0d1b1e; --panel:#12292e; --panel-2:#173940; --line:#22525c;
+    --ink:#eaf6f4; --muted:#8fb4b6; --accent:#2fd6a6; --accent-2:#1f9e7c;
+    --danger:#ff6b6b; --warn:#ffcf6b;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:radial-gradient(120% 60% at 100% 0%, #14343a 0%, transparent 55%), var(--bg);
+    color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,"Noto Naskh Arabic",sans-serif;
+    min-height:100vh; padding:18px 16px 40px;
+  }
+  .app{max-width:520px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+  .logo{
+    width:44px;height:44px;border-radius:12px;flex:0 0 auto;
+    background:linear-gradient(150deg,var(--accent),var(--accent-2));
+    display:grid;place-items:center;color:#04231b;font-weight:800;font-size:20px;
+    box-shadow:0 6px 18px rgba(47,214,166,.28)
+  }
+  .brand h1{font-size:19px;margin:0}
+  .brand p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+  .card{
+    background:linear-gradient(180deg,var(--panel) 0%,var(--panel-2) 100%);
+    border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;
+  }
+  .card .head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .card .head .n{width:26px;height:26px;border-radius:8px;flex:0 0 auto;
+    background:var(--bg);border:1px solid var(--line);
+    display:grid;place-items:center;font-size:14px;color:var(--accent)}
+  .card .head h2{font-size:15px;margin:0}
+  .hint{font-size:12px;color:var(--muted);margin:0 0 14px;line-height:1.6}
+  label{display:block;font-size:13px;color:var(--muted);margin:0 0 7px}
+  input[type=text]{width:100%;padding:14px;border-radius:12px;background:var(--bg);
+    border:1px solid var(--line);color:var(--ink);font-size:16px;outline:none;font-family:inherit}
+  input[type=text]:focus{border-color:var(--accent)}
+  .code-input{font-family:ui-monospace,monospace;letter-spacing:2px;direction:ltr;text-align:center;font-size:20px}
+  .file-drop{display:flex;align-items:center;gap:12px;padding:16px 14px;border-radius:12px;
+    border:1px dashed var(--line);background:var(--bg);cursor:pointer;transition:border-color .15s}
+  .file-drop:active{border-color:var(--accent)}
+  .file-drop .ic{font-size:22px}.file-drop .tx{font-size:14px}
+  .file-drop .tx small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+  input[type=file]{display:none}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 0;border-top:1px solid var(--line)}
+  .row:first-of-type{border-top:0}
+  .row .t{font-size:14px}.row .t small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+  .sw{position:relative;width:48px;height:28px;flex:0 0 auto}
+  .sw input{opacity:0;width:0;height:0}
+  .sw span{position:absolute;inset:0;background:var(--bg);border:1px solid var(--line);
+    border-radius:999px;transition:.2s;cursor:pointer}
+  .sw span:before{content:"";position:absolute;height:20px;width:20px;right:4px;top:3px;
+    background:var(--muted);border-radius:50%;transition:.2s}
+  .sw input:checked + span{background:rgba(47,214,166,.18);border-color:var(--accent)}
+  .sw input:checked + span:before{right:24px;background:var(--accent)}
+  .btn{-webkit-appearance:none;appearance:none;border:0;cursor:pointer;width:100%;
+    padding:15px;border-radius:12px;font-size:16px;font-weight:700;font-family:inherit;
+    margin-top:14px;transition:transform .05s,opacity .15s}
+  .btn:active{transform:scale(.99)}
+  .btn-primary{background:linear-gradient(150deg,var(--accent),var(--accent-2));color:#04231b}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+  .btn.small{margin-top:0}
+  .two{display:flex;gap:10px}.two .btn{flex:1}
+  /* scanner */
+  .scanbox{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:3/4;display:none}
+  .scanbox.on{display:block}
+  .scanbox video{width:100%;height:100%;object-fit:cover;display:block}
+  .guide{position:absolute;left:6%;right:6%;top:42%;height:16%;border:2px solid var(--accent);
+    border-radius:10px;box-shadow:0 0 0 2000px rgba(0,0,0,.30);pointer-events:none}
+  .guide:after{content:"حُط الرقم الكبير هنا";position:absolute;top:-24px;right:0;left:0;
+    text-align:center;color:var(--accent);font-size:12px}
+  .flash{position:absolute;inset:0;background:var(--accent);opacity:0;pointer-events:none}
+  .flash.hit{animation:fl .35s ease-out}@keyframes fl{0%{opacity:.4}100%{opacity:0}}
+  .busy{position:absolute;inset:0;background:rgba(4,35,27,.6);display:none;
+    place-items:center;color:var(--ink);font-size:14px}
+  .busy.on{display:grid}
+  .spin{width:26px;height:26px;border:3px solid rgba(255,255,255,.25);border-top-color:var(--accent);
+    border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .confirm{display:none;margin-top:14px}
+  .confirm.on{display:block}
+  .cap-thumb{width:100%;border-radius:10px;border:1px solid var(--line);margin-bottom:12px;display:block}
+  /* result */
+  .result{display:none}.result.show{display:block}
+  .stats{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .chip{flex:1;min-width:80px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .chip .big{font-size:26px;font-weight:800;color:var(--accent);line-height:1}
+  .chip.warn .big{color:var(--warn)}
+  .chip .lbl{font-size:12px;color:var(--muted);margin-top:5px}
+  .preview{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    max-height:220px;overflow:auto;font-family:ui-monospace,monospace;font-size:13px;line-height:1.9;
+    color:var(--ink);direction:ltr;text-align:left;white-space:pre}
+  .msg{padding:12px 14px;border-radius:10px;font-size:13px;margin-top:12px;display:none;line-height:1.6}
+  .msg.show{display:block}
+  .msg.err{background:rgba(255,107,107,.12);border:1px solid var(--danger);color:#ffd0d0}
+  .msg.warn{background:rgba(255,207,107,.12);border:1px solid var(--warn);color:#ffe9bf}
+  .msg.ok{background:rgba(47,214,166,.12);border:1px solid var(--accent);color:#bff3e2}
+  .footer{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="brand">
+    <div class="logo">C</div>
+    <div><h1>Card Code</h1><p>إستخرج · صوّر الكود · حوّل لملف Texte</p></div>
+  </div>
+
+  <!-- Source A: Excel -->
+  <div class="card">
+    <div class="head"><div class="n">📄</div><h2>من ملف Excel</h2></div>
+    <p class="hint">إختار ملف فيه عمود <b>Card Code</b>.</p>
+    <label class="file-drop" for="file">
+      <span class="ic">📄</span>
+      <span class="tx" id="fileLabel">إضغط باش تختار ملف<small>xlsx · xls · csv</small></span>
+    </label>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" />
+    <button class="btn btn-primary" id="go" disabled>أضف أكواد Excel</button>
+    <div class="msg err" id="err"></div>
+  </div>
+
+  <!-- Source B: Camera OCR -->
+  <div class="card">
+    <div class="head"><div class="n">📷</div><h2>صوّر الكود بالكاميرا</h2></div>
+    <p class="hint">صوّب على <b>الرقم الكبير</b> تاع الكارت (رمز التعبئة، ماشي الباركود). حُطّو داخل الإطار وصوّر — تقرا الأرقام وتأكّدهم قبل ما تزيدهم.</p>
+    <div class="scanbox" id="scanbox">
+      <video id="video" playsinline muted></video>
+      <div class="guide"></div>
+      <div class="flash" id="flash"></div>
+      <div class="busy" id="busy"><div><div class="spin"></div>تقرا الأرقام…</div></div>
+    </div>
+    <button class="btn btn-primary" id="camBtn">حلّ الكاميرا</button>
+    <button class="btn btn-primary" id="shotBtn" style="display:none">صوّر واقرا الكود</button>
+
+    <div class="confirm" id="confirm">
+      <img class="cap-thumb" id="thumb" alt="">
+      <label>الكود المقروء — تأكّدو وصحّح إلا لزم</label>
+      <input type="text" id="codeInput" class="code-input" inputmode="numeric" autocomplete="off" placeholder="—">
+      <div class="msg warn" id="codeWarn"></div>
+      <div class="two">
+        <button class="btn btn-primary small" id="addCode">زيد الكود ✓</button>
+        <button class="btn btn-ghost small" id="retake">عاود صوّر</button>
+      </div>
+    </div>
+    <div class="msg err" id="scanErr"></div>
+  </div>
+
+  <!-- Output settings -->
+  <div class="card">
+    <div class="head"><div class="n">⚙</div><h2>إعدادات الإخراج</h2></div>
+    <label for="fname">إسم ملف Texte</label>
+    <input type="text" id="fname" autocomplete="off" placeholder="card_codes" />
+    <div style="height:14px"></div>
+    <label for="prefix">بداية الكود (اختياري)</label>
+    <input type="text" id="prefix" inputmode="numeric" autocomplete="off" placeholder="مثال: 55" class="code-input" style="font-size:16px;letter-spacing:0">
+    <p class="hint" style="margin:8px 0 0">إلا كتبتها، عند التصوير الأداة تلقى الكود اللي يبدا بهاذ الأرقام وتتجاهل الباقي (كيما 111 ولا الباركود).</p>
+    <div style="height:14px"></div>
+    <div class="row">
+      <div class="t">طول الكود المنتظر<small>يستعمل في فحص الطول والتصوير</small></div>
+      <div style="width:96px"><input type="text" id="expLen" inputmode="numeric" value="15" class="code-input" style="font-size:16px;letter-spacing:0;padding:10px"></div>
+    </div>
+    <div class="row">
+      <div class="t">حذف المكرّرات<small>يحذف الأكواد اللي تعاودت</small></div>
+      <label class="sw"><input type="checkbox" id="dedup" checked><span></span></label>
+    </div>
+    <div class="row">
+      <div class="t">فحص الطول<small>ينبّهك إلا كان كود طولو مختلف</small></div>
+      <label class="sw"><input type="checkbox" id="validate" checked><span></span></label>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="card result" id="resultCard">
+    <div class="head"><div class="n">✓</div><h2>النتيجة</h2></div>
+    <div class="stats">
+      <div class="chip"><div class="big" id="count">0</div><div class="lbl">كود صالح</div></div>
+      <div class="chip"><div class="big" id="dupCount">0</div><div class="lbl">مكرّر محذوف</div></div>
+      <div class="chip warn"><div class="big" id="badCount">0</div><div class="lbl">مشكوك فيه</div></div>
+    </div>
+    <div class="msg warn" id="warn"></div>
+    <div class="preview" id="preview"></div>
+    <button class="btn btn-primary" id="download">حمّل / إحفظ ملف Texte</button>
+    <button class="btn btn-ghost" id="copy">نسخ الكل</button>
+    <button class="btn btn-danger" id="clear">مسح الكل</button>
+    <div class="msg ok" id="okmsg"></div>
+  </div>
+
+  <div class="footer">Excel → Texte يخدم أوفلاين. التصوير (OCR) يحتاج أنترنت أول مرّة باش يحمّل محرّك القراءة.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  const $=id=>document.getElementById(id);
+  const show=(el,t)=>{el.textContent=t;el.classList.add("show");};
+  const hide=el=>{el.classList.remove("show");el.textContent="";};
+
+  // ---- shared data ----
+  let rawCodes=[], finalCodes=[];
+  const dedupEl=$("dedup"), validateEl=$("validate"), expLenEl=$("expLen");
+  const countEl=$("count"), dupEl=$("dupCount"), badEl=$("badCount");
+  const previewEl=$("preview"), warnEl=$("warn"), resultCard=$("resultCard");
+  const expLen=()=>{const n=parseInt((expLenEl.value||"").replace(/\D/g,""),10);return n>0?n:0;};
+
+  function render(){
+    let list=rawCodes, dupRemoved=0;
+    if(dedupEl.checked){
+      const seen=new Set(),out=[];
+      for(const v of rawCodes){ if(seen.has(v)){dupRemoved++;continue;} seen.add(v); out.push(v); }
+      list=out;
+    }
+    let bad=0, warnMsg="";
+    if(validateEl.checked && list.length){
+      let L=expLen();
+      if(!L){ const f={}; for(const v of list) f[v.length]=(f[v.length]||0)+1; let mC=-1; for(const k in f) if(f[k]>mC){mC=f[k];L=+k;} }
+      for(const v of list) if(v.length!==L) bad++;
+      if(bad>0) warnMsg="⚠ "+bad+" كود طولهم مختلف على "+L+" رقم — راجعهم.";
+    }
+    finalCodes=list;
+    countEl.textContent=list.length.toLocaleString("en-US");
+    dupEl.textContent=dupRemoved.toLocaleString("en-US");
+    badEl.textContent=bad.toLocaleString("en-US");
+    if(warnMsg) show(warnEl,warnMsg); else hide(warnEl);
+    const shown=list.slice(0,80).join("\n");
+    previewEl.textContent=list.length?(shown+(list.length>80?"\n… +"+(list.length-80):"")):"—";
+    if(rawCodes.length) resultCard.classList.add("show");
+  }
+  function addCodes(arr){
+    for(let v of arr){ if(v==null)continue; v=String(v).trim().replace(/\s+/g,""); if(v) rawCodes.push(v); }
+    render();
+  }
+  dedupEl.addEventListener("change",render);
+  validateEl.addEventListener("change",render);
+  expLenEl.addEventListener("input",render);
+
+  // ---- Excel ----
+  const fileEl=$("file"), goEl=$("go"), errEl=$("err"), fileLabel=$("fileLabel"), fnameEl=$("fname");
+  let picked=null;
+  fileEl.addEventListener("change",function(){
+    picked=fileEl.files[0]||null; hide(errEl);
+    if(picked){ fileLabel.innerHTML=picked.name+"<small>مُختار ✓</small>";
+      if(!fnameEl.value.trim()) fnameEl.value=picked.name.replace(/\.[^.]+$/,""); goEl.disabled=false;
+    }else{ fileLabel.innerHTML="إضغط باش تختار ملف<small>xlsx · xls · csv</small>"; goEl.disabled=true; }
+  });
+  function pickColumn(rows){
+    const header=rows[0].map(c=>String(c==null?"":c).trim().toLowerCase());
+    let col=header.findIndex(h=>h.includes("card")&&h.includes("code"));
+    if(col===-1) col=header.findIndex(h=>h.includes("code"));
+    if(col!==-1) return {col,startRow:1};
+    const width=Math.max(...rows.map(r=>r.length));
+    let best=0,bestScore=-1;
+    for(let c=0;c<width;c++){let s=0;for(const r of rows){const v=String(r[c]==null?"":r[c]).replace(/\s/g,"");if(/^\d{6,}$/.test(v))s++;}if(s>bestScore){bestScore=s;best=c;}}
+    const first=String(rows[0][best]==null?"":rows[0][best]).replace(/\s/g,"");
+    return {col:best,startRow:/^\d{6,}$/.test(first)?0:1};
+  }
+  goEl.addEventListener("click",function(){
+    hide(errEl); if(!picked){show(errEl,"إختار ملف الأول.");return;}
+    const r=new FileReader();
+    r.onerror=()=>show(errEl,"ما نجمناش نقراو الملف.");
+    r.onload=function(e){
+      try{
+        const wb=XLSX.read(e.target.result,{type:"array"});
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:""});
+        if(!rows.length){show(errEl,"الملف فارغ.");return;}
+        const {col,startRow}=pickColumn(rows); const got=[];
+        for(let i=startRow;i<rows.length;i++){let v=rows[i][col];if(v==null)continue;v=String(v).trim();if(v!=="")got.push(v);}
+        if(!got.length){show(errEl,"ما لقيتش أكواد. تأكد بلي فيه عمود Card Code.");return;}
+        addCodes(got); resultCard.scrollIntoView({behavior:"smooth",block:"start"});
+      }catch(err){show(errEl,"مشكل في قراءة الملف: "+err.message);}
+    };
+    r.readAsArrayBuffer(picked);
+  });
+
+  // ---- Camera + OCR ----
+  const camBtn=$("camBtn"), shotBtn=$("shotBtn"), scanBox=$("scanbox"), videoEl=$("video");
+  const busyEl=$("busy"), flashEl=$("flash"), scanErr=$("scanErr");
+  const confirmBox=$("confirm"), thumbEl=$("thumb"), codeInput=$("codeInput"), codeWarn=$("codeWarn");
+  let stream=null, worker=null;
+
+  async function openCam(){
+    hide(scanErr);
+    if(location.protocol==="file:"){ show(scanErr,"باش تخدم الكاميرا، حلّ الصفحة من رابط https ولا localhost — ماشي مباشرة من الملف. الإكسل يخدم عادي."); return; }
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ show(scanErr,"الكاميرا ما راهيش مدعومة في هذا المتصفح."); return; }
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+      videoEl.srcObject=stream; await videoEl.play();
+      scanBox.classList.add("on"); camBtn.style.display="none"; shotBtn.style.display="block";
+      confirmBox.classList.remove("on");
+      ensureWorker().catch(()=>{}); // preload OCR engine while user frames the card
+    }catch(err){
+      let m="ما نجمناش نحلّو الكاميرا.";
+      if(err&&err.name==="NotAllowedError") m="لازم تسمح للكاميرا، حلّ الإذن وعاود.";
+      else if(err&&err.name==="NotFoundError") m="ما لقيناش كاميرا.";
+      show(scanErr,m);
+    }
+  }
+  function closeCam(){
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+    scanBox.classList.remove("on"); camBtn.style.display="block"; shotBtn.style.display="none";
+  }
+  // guide box position (must match .guide CSS: left/right 6%, top 42%, height 16%)
+  const GX=0.06, GW=0.88, GY=0.42, GH=0.16;
+  function cropGuide(){
+    const vw=videoEl.videoWidth, vh=videoEl.videoHeight;
+    // box on screen uses object-fit:cover — map the green guide (screen coords)
+    // back to raw-frame coords so the crop matches exactly what the user sees.
+    const bw=scanBox.clientWidth, bh=scanBox.clientHeight;
+    const scale=Math.max(bw/vw, bh/vh);
+    const dispW=vw*scale, dispH=vh*scale;
+    const offX=(dispW-bw)/2, offY=(dispH-bh)/2;
+    // guide in screen px
+    const gx=bw*GX, gw=bw*GW, gy=bh*GY, gh=bh*GH;
+    // -> raw frame px
+    let sx=(offX+gx)/scale, sy=(offY+gy)/scale, sw=gw/scale, sh=gh/scale;
+    // small padding
+    const padY=sh*0.15; sy=Math.max(0,sy-padY); sh=Math.min(vh-sy, sh+padY*2);
+    // scale so the crop is a sensible size for OCR (cap width ~1000px) — faster than blind upscale
+    const targetW=1000, up=Math.min(4, Math.max(1.5, targetW/Math.max(1,sw)));
+    const c=document.createElement("canvas"); c.width=Math.round(sw*up); c.height=Math.round(sh*up);
+    const ctx=c.getContext("2d"); ctx.imageSmoothingEnabled=true;
+    ctx.drawImage(videoEl, sx,sy,sw,sh, 0,0,c.width,c.height);
+    // grayscale
+    const img=ctx.getImageData(0,0,c.width,c.height), d=img.data;
+    const gray=new Uint8Array(c.width*c.height);
+    for(let i=0,j=0;i<d.length;i+=4,j++){ gray[j]=(0.3*d[i]+0.59*d[i+1]+0.11*d[i+2])|0; }
+    // Otsu threshold -> clean black/white
+    const hist=new Array(256).fill(0);
+    for(let j=0;j<gray.length;j++) hist[gray[j]]++;
+    const total=gray.length; let sum=0; for(let t=0;t<256;t++) sum+=t*hist[t];
+    let sumB=0,wB=0,maxVar=-1,thr=128;
+    for(let t=0;t<256;t++){ wB+=hist[t]; if(!wB)continue; const wF=total-wB; if(!wF)break;
+      sumB+=t*hist[t]; const mB=sumB/wB, mF=(sum-sumB)/wF; const v=wB*wF*(mB-mF)*(mB-mF);
+      if(v>maxVar){maxVar=v;thr=t;} }
+    for(let i=0,j=0;i<d.length;i+=4,j++){ const v=gray[j]>thr?255:0; d[i]=d[i+1]=d[i+2]=v; }
+    ctx.putImageData(img,0,0);
+    return c;
+  }
+  async function ensureWorker(){
+    if(worker) return worker;
+    if(typeof Tesseract==="undefined") throw new Error("محرّك القراءة ما تحمّلش — تأكّد من الأنترنت وعاود حلّ الصفحة.");
+    worker=await Tesseract.createWorker("eng",1,{
+      // smaller "fast" model: quicker first download AND quicker recognition.
+      // Tesseract.js caches it in the browser, so it loads only once.
+      langPath:"https://tessdata.projectnaptha.com/4.0.0_fast"
+    });
+    await worker.setParameters({tessedit_char_whitelist:"0123456789"});
+    return worker;
+  }
+  const prefixEl=$("prefix");
+  const getPrefix=()=>(prefixEl.value||"").replace(/\D/g,"");
+  async function readCode(canvas){
+    const w=await ensureWorker(); const P=getPrefix(), L=expLen();
+    const streams=[];
+    for(const psm of ["7","6","11"]){
+      await w.setParameters({tessedit_pageseg_mode:psm});
+      const {data}=await w.recognize(canvas);
+      const runs=((data&&data.text)||"").match(/\d+/g)||[];
+      if(runs.length){ const s=runs.join(""); if(streams.indexOf(s)===-1) streams.push(s); }
+      const r=refine(streams);
+      // stop as soon as we have a confident hit — no need for extra passes
+      if(P&&L){ if(r.length===L && r.indexOf(P)===0) return r; }
+      else if(L){ if(r.length===L) return r; }
+    }
+    return refine(streams);
+  }
+  // Use the "start of code" hint to lock onto the real code inside a noisy digit stream.
+  function refine(streams){
+    const P=getPrefix(), L=expLen();
+    let longest="";
+    for(const s of streams){
+      if(s.length>longest.length) longest=s;
+      if(P&&L){ let i=s.indexOf(P); while(i!==-1){ if(s.length-i>=L) return s.substr(i,L); i=s.indexOf(P,i+1); } }
+    }
+    if(P&&!L){ for(const s of streams){ const i=s.indexOf(P); if(i!==-1) return s.substr(i); } }
+    // no prefix but exact length match somewhere
+    if(!P&&L){ for(const s of streams) if(s.length===L) return s; }
+    return longest;
+  }
+  function checkCode(v){
+    const L=expLen();
+    if(!/^\d+$/.test(v)) return "لازم أرقام برك.";
+    if(L && v.length!==L) return "⚠ الطول "+v.length+" ماشي "+L+" — راجع بعينك.";
+    return "";
+  }
+  async function capture(){
+    hide(scanErr);
+    try{
+      const c=cropGuide();
+      thumbEl.src=c.toDataURL("image/png");
+      busyEl.classList.add("on");
+      const txt=await readCode(c);
+      busyEl.classList.remove("on");
+      flashEl.classList.remove("hit"); void flashEl.offsetWidth; flashEl.classList.add("hit");
+      codeInput.value=txt;
+      if(!txt){ show(codeWarn,"ما قراش الأرقام — قرّب الكاميرا وزيد ضوء وعاود صوّر."); }
+      else { const msg=checkCode(txt); if(msg) show(codeWarn,msg); else hide(codeWarn); }
+      confirmBox.classList.add("on");
+      shotBtn.style.display="none";
+      confirmBox.scrollIntoView({behavior:"smooth",block:"center"});
+    }catch(err){
+      busyEl.classList.remove("on");
+      show(scanErr,err.message||"مشكل في القراءة.");
+    }
+  }
+  codeInput.addEventListener("input",function(){
+    const v=codeInput.value.replace(/\s+/g,""); const m=checkCode(v);
+    if(m) show(codeWarn,m); else hide(codeWarn);
+  });
+  function backToShot(){ confirmBox.classList.remove("on"); shotBtn.style.display="block"; }
+  $("addCode").addEventListener("click",function(){
+    const v=codeInput.value.replace(/\s+/g,"");
+    if(!/^\d+$/.test(v)){ show(codeWarn,"الكود فارغ ولا فيه حروف — صحّحو."); return; }
+    addCodes([v]); backToShot();
+    if(navigator.vibrate) navigator.vibrate(50);
+  });
+  $("retake").addEventListener("click",backToShot);
+  camBtn.addEventListener("click",openCam);
+  shotBtn.addEventListener("click",capture);
+  window.addEventListener("pagehide",closeCam);
+
+  // ---- Output ----
+  const outName=()=>((fnameEl.value.trim()||"card_codes").replace(/\.txt$/i,""))+".txt";
+  const buildText=()=>finalCodes.join("\r\n")+"\r\n";
+  const okEl=$("okmsg");
+  $("download").addEventListener("click",async function(){
+    hide(okEl);
+    if(!finalCodes.length){ okEl.className="msg warn"; show(okEl,"ما كاش أكواد باش نحفظو."); return; }
+    okEl.className="msg ok"; const text=buildText();
+    if(window.showSaveFilePicker){
+      try{ const h=await window.showSaveFilePicker({suggestedName:outName(),
+        types:[{description:"Fichier texte",accept:{"text/plain":[".txt"]}}]});
+        const w=await h.createWritable(); await w.write(text); await w.close();
+        show(okEl,"تحفظ ✓ في المكان اللي إخترتو."); return;
+      }catch(err){ if(err&&err.name==="AbortError") return; }
+    }
+    const blob=new Blob([text],{type:"text/plain;charset=utf-8"}), url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=outName();
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    show(okEl,"تحمّل ✓ لقاه في مجلّد Downloads.");
+  });
+  $("copy").addEventListener("click",async function(){
+    if(!finalCodes.length) return; const txt=finalCodes.join("\n");
+    try{ await navigator.clipboard.writeText(txt);
+      const b=$("copy"),o=b.textContent;b.textContent="تنسخ ✓";setTimeout(()=>b.textContent=o,1200);
+    }catch(_){ const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}ta.remove(); }
+  });
+  $("clear").addEventListener("click",function(){
+    rawCodes=[]; render(); resultCard.classList.remove("show"); hide(okEl);
+  });
+})();
+</script>
+</body>
+</html>
