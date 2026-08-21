@@ -238,7 +238,7 @@
       <select id="batchSel" style="width:100%;padding:12px;border-radius:12px;background:var(--bg);border:1px solid var(--line);color:var(--ink);font-size:14px;margin-bottom:10px"></select>
       <input type="text" id="gsearch" autocomplete="off" placeholder="بحث بالكود…">
       <div id="glist"></div>
-      <button class="btn btn-danger" id="delBatch" style="display:none">مسح صور هذه الدفعة</button>
+      <button class="btn btn-danger" id="delBatch" style="display:none">مسح أكواد هذه الدفعة (تبقى الصور)</button>
       <button class="btn btn-danger" id="clearImgs">مسح كل الصور المحفوظة</button>
     </div>
     <button class="btn btn-danger" id="clear">مسح الكل</button>
@@ -702,11 +702,12 @@
   delBatchBtn.addEventListener("click",function(){
     const sel=batchSel.value; if(!sel||sel==="__all__"||!batches[+sel]) return;
     const b=batches[+sel];
-    for(const c of b.codes){ if(codeImages[c]) delete codeImages[c]; }
-    saveImages();
+    // remove only the CODES of this batch from the list — keep the images for lookup/correction
+    const set=new Set(b.codes);
+    rawCodes=rawCodes.filter(x=>!set.has(x)); saveCodes();
     batches.splice(+sel,1); saveBatches();
     batchSel.value="__all__";
-    refreshGallery();
+    render(); refreshGallery();
   });
 
   // type a code -> show its saved photo
