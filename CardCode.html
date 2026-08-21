@@ -105,6 +105,19 @@
   .msg.err{background:rgba(255,107,107,.12);border:1px solid var(--danger);color:#ffd0d0}
   .msg.warn{background:rgba(255,207,107,.12);border:1px solid var(--warn);color:#ffe9bf}
   .msg.ok{background:rgba(47,214,166,.12);border:1px solid var(--accent);color:#bff3e2}
+  /* gallery of scanned code photos */
+  #gallery{display:none;margin-top:12px}
+  #gallery.on{display:block}
+  #gsearch{margin-bottom:10px}
+  .grow{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--line);
+    border-radius:10px;background:var(--bg);margin-bottom:8px}
+  .grow img{width:120px;height:34px;object-fit:cover;border-radius:6px;background:#fff;flex:0 0 auto;cursor:pointer}
+  .grow .gc{font-family:ui-monospace,monospace;font-size:14px;direction:ltr;flex:1;word-break:break-all}
+  .lb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;place-items:center;z-index:50;padding:20px}
+  .lb.on{display:grid}
+  .lb-in{max-width:100%;text-align:center}
+  .lb-in img{max-width:100%;background:#fff;border-radius:10px;margin-bottom:12px}
+  .lb-in .c{font-family:ui-monospace,monospace;font-size:22px;color:#fff;direction:ltr;margin-bottom:14px;letter-spacing:2px}
   .footer{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
 </style>
 </head>
@@ -154,6 +167,14 @@
     <div class="msg err" id="scanErr"></div>
   </div>
 
+  <!-- Lookup: type a code -> show its photo -->
+  <div class="card">
+    <div class="head"><div class="n">🔎</div><h2>ابحث عن صورة كود</h2></div>
+    <p class="hint">كتبي الكود (ولا آخر أرقام منّو) باش تشوفي صورتو الأصلية اللي تصوّرت — للأكواد المصوّرة بالكاميرا برك.</p>
+    <input type="text" id="lookup" class="code-input" inputmode="numeric" autocomplete="off" placeholder="اكتب الكود…" style="letter-spacing:1px">
+    <div id="lookupResult" style="margin-top:12px"></div>
+  </div>
+
   <!-- Output settings -->
   <div class="card">
     <div class="head"><div class="n">⚙</div><h2>إعدادات الإخراج</h2></div>
@@ -189,10 +210,24 @@
     <div class="msg warn" id="warn"></div>
     <div class="preview" id="preview"></div>
     <button class="btn btn-primary" id="download">حمّل / إحفظ ملف Texte</button>
+    <button class="btn btn-ghost" id="share">مشاركة (Partage)</button>
     <button class="btn btn-ghost" id="copy">نسخ الكل</button>
+    <button class="btn btn-ghost" id="galleryBtn" style="display:none">🖼 صور الأكواد المصوّرة</button>
+    <div id="gallery">
+      <input type="text" id="gsearch" autocomplete="off" placeholder="بحث بالكود…">
+      <div id="glist"></div>
+      <button class="btn btn-danger" id="clearImgs">مسح كل الصور المحفوظة</button>
+    </div>
     <button class="btn btn-danger" id="clear">مسح الكل</button>
     <div class="msg ok" id="okmsg"></div>
   </div>
+
+  <div class="lb" id="lightbox">
+    <div class="lb-in">
+      <img id="lbimg" alt="">
+      <div class="c" id="lbcode"></div>
+      <button class="btn btn-primary" id="lbclose" style="max-width:200px;margin:0 auto">إغلاق</button>
+    </div>
 
   <div class="footer">Excel → Texte يخدم أوفلاين. التصوير (OCR) يحتاج أنترنت أول مرّة باش يحمّل محرّك القراءة.</div>
 </div>
@@ -208,6 +243,18 @@
 
   // ---- shared data ----
   let rawCodes=[], finalCodes=[];
+  const codeImages={};   // code -> dataURL (photo of the scanned code)
+  const IMG_KEY="cardcode_imgs_v1";
+  try{ const saved=JSON.parse(localStorage.getItem(IMG_KEY)||"{}"); if(saved&&typeof saved==="object") Object.assign(codeImages,saved); }catch(_){}
+  function saveImages(){
+    try{ localStorage.setItem(IMG_KEY, JSON.stringify(codeImages)); }
+    catch(_){
+      // storage full: drop the oldest entries and retry
+      const keys=Object.keys(codeImages);
+      for(let i=0;i<keys.length && i<Math.ceil(keys.length/2);i++) delete codeImages[keys[i]];
+      try{ localStorage.setItem(IMG_KEY, JSON.stringify(codeImages)); }catch(e){}
+    }
+  }
   const dedupEl=$("dedup"), validateEl=$("validate"), expLenEl=$("expLen");
   const countEl=$("count"), dupEl=$("dupCount"), badEl=$("badCount");
   const previewEl=$("preview"), warnEl=$("warn"), resultCard=$("resultCard");
@@ -397,7 +444,7 @@
     hide(scanErr);
     try{
       const c=cropGuide();
-      thumbEl.src=c.toDataURL("image/png");
+      thumbEl.src=c.toDataURL("image/jpeg",0.7);
       busyEl.classList.add("on");
       const txt=await readCode(c);
       busyEl.classList.remove("on");
@@ -421,7 +468,9 @@
   $("addCode").addEventListener("click",function(){
     const v=codeInput.value.replace(/\s+/g,"");
     if(!/^\d+$/.test(v)){ show(codeWarn,"الكود فارغ ولا فيه حروف — صحّحو."); return; }
-    addCodes([v]); backToShot();
+    addCodes([v]);
+    if(thumbEl.src && thumbEl.src.indexOf("data:")===0){ codeImages[v]=thumbEl.src; saveImages(); refreshGallery(); }
+    backToShot();
     if(navigator.vibrate) navigator.vibrate(50);
   });
   $("retake").addEventListener("click",backToShot);
@@ -450,12 +499,85 @@
     setTimeout(()=>URL.revokeObjectURL(url),1500);
     show(okEl,"تحمّل ✓ لقاه في مجلّد Downloads.");
   });
+  $("share").addEventListener("click",async function(){
+    hide(okEl);
+    if(!finalCodes.length){ okEl.className="msg warn"; show(okEl,"ما كاش أكواد باش نشاركو."); return; }
+    okEl.className="msg ok";
+    const text=buildText();
+    // best: share the actual .txt file (opens Telegram, Gmail, Bluetooth...)
+    try{
+      const file=new File([text],outName(),{type:"text/plain"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:outName()});
+        return;
+      }
+    }catch(err){ if(err&&err.name==="AbortError") return; }
+    // fallback: share as plain text
+    try{
+      if(navigator.share){ await navigator.share({title:outName(),text:text}); return; }
+    }catch(err){ if(err&&err.name==="AbortError") return; }
+    // last resort: download
+    const blob=new Blob([text],{type:"text/plain;charset=utf-8"}), url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=outName();
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+    show(okEl,"المشاركة ماشي مدعومة هنا — تحمّل الملف في Downloads.");
+  });
   $("copy").addEventListener("click",async function(){
     if(!finalCodes.length) return; const txt=finalCodes.join("\n");
     try{ await navigator.clipboard.writeText(txt);
       const b=$("copy"),o=b.textContent;b.textContent="تنسخ ✓";setTimeout(()=>b.textContent=o,1200);
     }catch(_){ const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}ta.remove(); }
   });
+  // ---- gallery of saved code photos ----
+  const galleryBtn=$("galleryBtn"), galleryBox=$("gallery"), gsearch=$("gsearch"), glist=$("glist");
+  const lightbox=$("lightbox"), lbimg=$("lbimg"), lbcode=$("lbcode");
+  function updateGalleryBtn(){ galleryBtn.style.display=Object.keys(codeImages).length?"block":"none"; }
+  function refreshGallery(){
+    updateGalleryBtn();
+    const q=(gsearch.value||"").replace(/\D/g,"");
+    const codes=Object.keys(codeImages).filter(c=>!q||c.indexOf(q)!==-1);
+    glist.innerHTML="";
+    if(!codes.length){ glist.innerHTML='<p class="hint">ما كاش صور'+(q?" لهاذ البحث":"")+'.</p>'; return; }
+    for(const c of codes){
+      const row=document.createElement("div"); row.className="grow";
+      const img=document.createElement("img"); img.src=codeImages[c]; img.alt=c;
+      img.addEventListener("click",()=>{ lbimg.src=codeImages[c]; lbcode.textContent=c; lightbox.classList.add("on"); });
+      const span=document.createElement("div"); span.className="gc"; span.textContent=c;
+      row.appendChild(img); row.appendChild(span); glist.appendChild(row);
+    }
+  }
+  galleryBtn.addEventListener("click",()=>{ galleryBox.classList.toggle("on"); if(galleryBox.classList.contains("on")) refreshGallery(); });
+  gsearch.addEventListener("input",refreshGallery);
+
+  // type a code -> show its saved photo
+  const lookupEl=$("lookup"), lookupResult=$("lookupResult");
+  function doLookup(){
+    const q=(lookupEl.value||"").replace(/\D/g,"");
+    lookupResult.innerHTML="";
+    if(!q){ return; }
+    // match exact, or code that ends with / contains what she typed
+    const keys=Object.keys(codeImages);
+    let hits=keys.filter(c=>c===q);
+    if(!hits.length) hits=keys.filter(c=>c.endsWith(q));
+    if(!hits.length) hits=keys.filter(c=>c.indexOf(q)!==-1);
+    if(!hits.length){ lookupResult.innerHTML='<p class="hint">ما كاش صورة لهاذ الكود (يمكن جا من الإكسل، ما تصوّرش).</p>'; return; }
+    for(const c of hits.slice(0,5)){
+      const row=document.createElement("div"); row.className="grow";
+      const img=document.createElement("img"); img.src=codeImages[c]; img.alt=c;
+      img.addEventListener("click",()=>{ lbimg.src=codeImages[c]; lbcode.textContent=c; lightbox.classList.add("on"); });
+      const span=document.createElement("div"); span.className="gc"; span.textContent=c;
+      row.appendChild(img); row.appendChild(span); lookupResult.appendChild(row);
+    }
+  }
+  lookupEl.addEventListener("input",doLookup);
+  $("lbclose").addEventListener("click",()=>lightbox.classList.remove("on"));
+  lightbox.addEventListener("click",e=>{ if(e.target===lightbox) lightbox.classList.remove("on"); });
+  $("clearImgs").addEventListener("click",function(){
+    for(const k in codeImages) delete codeImages[k];
+    saveImages(); refreshGallery(); galleryBox.classList.remove("on");
+  });
+  updateGalleryBtn();
+
   $("clear").addEventListener("click",function(){
     rawCodes=[]; render(); resultCard.classList.remove("show"); hide(okEl);
   });
