@@ -234,8 +234,11 @@
     <button class="btn btn-ghost" id="copy">نسخ الكل</button>
     <button class="btn btn-ghost" id="galleryBtn" style="display:none">🖼 صور الأكواد المصوّرة</button>
     <div id="gallery">
+      <label for="batchSel" style="margin-top:4px">الدفعة (حسب إسم الملف المصدّر)</label>
+      <select id="batchSel" style="width:100%;padding:12px;border-radius:12px;background:var(--bg);border:1px solid var(--line);color:var(--ink);font-size:14px;margin-bottom:10px"></select>
       <input type="text" id="gsearch" autocomplete="off" placeholder="بحث بالكود…">
       <div id="glist"></div>
+      <button class="btn btn-danger" id="delBatch" style="display:none">مسح صور هذه الدفعة</button>
       <button class="btn btn-danger" id="clearImgs">مسح كل الصور المحفوظة</button>
     </div>
     <button class="btn btn-danger" id="clear">مسح الكل</button>
@@ -268,6 +271,10 @@
   function saveCodes(){ try{ localStorage.setItem(CODES_KEY, JSON.stringify(rawCodes)); }catch(_){} }
   const codeImages={};   // code -> dataURL (photo of the scanned code)
   const IMG_KEY="cardcode_imgs_v1";
+  let batches=[];        // [{name, ts, codes:[]}] — one per export
+  const BATCH_KEY="cardcode_batches_v1";
+  try{ const b=JSON.parse(localStorage.getItem(BATCH_KEY)||"[]"); if(Array.isArray(b)) batches=b; }catch(_){}
+  function saveBatches(){ try{ localStorage.setItem(BATCH_KEY, JSON.stringify(batches)); }catch(_){} }
   try{ const saved=JSON.parse(localStorage.getItem(IMG_KEY)||"{}"); if(saved&&typeof saved==="object") Object.assign(codeImages,saved); }catch(_){}
   function saveImages(){
     try{ localStorage.setItem(IMG_KEY, JSON.stringify(codeImages)); }
@@ -599,45 +606,55 @@
   };
   const buildText=()=>finalCodes.join("\r\n")+"\r\n";
   const okEl=$("okmsg");
+  // after a successful export: record a batch (filename + its codes/images), then offer to clear the list
+  function exportDone(name){
+    if(finalCodes.length){
+      batches.push({name:name, ts:Date.now(), codes:finalCodes.slice()}); saveBatches();
+      refreshGallery();
+    }
+    setTimeout(function(){
+      if(confirm("تحبي تمسحي الأكواد من القائمة؟\n(الصور تبقى محفوظة في الدفعة للمراجعة)")){
+        rawCodes=[]; saveCodes(); try{autoSeen.clear();}catch(_){}
+        render(); resultCard.classList.remove("show");
+      }
+    },300);
+  }
   $("download").addEventListener("click",async function(){
     hide(okEl);
     if(!finalCodes.length){ okEl.className="msg warn"; show(okEl,"ما كاش أكواد باش نحفظو."); return; }
-    okEl.className="msg ok"; const text=buildText();
+    okEl.className="msg ok"; const text=buildText(); const nm=outName();
     if(window.showSaveFilePicker){
-      try{ const h=await window.showSaveFilePicker({suggestedName:outName(),
+      try{ const h=await window.showSaveFilePicker({suggestedName:nm,
         types:[{description:"Fichier texte",accept:{"text/plain":[".txt"]}}]});
         const w=await h.createWritable(); await w.write(text); await w.close();
-        show(okEl,"تحفظ ✓ في المكان اللي إخترتو."); return;
+        show(okEl,"تحفظ ✓ في المكان اللي إخترتو."); exportDone(nm); return;
       }catch(err){ if(err&&err.name==="AbortError") return; }
     }
     const blob=new Blob([text],{type:"text/plain;charset=utf-8"}), url=URL.createObjectURL(blob);
-    const a=document.createElement("a"); a.href=url; a.download=outName();
+    const a=document.createElement("a"); a.href=url; a.download=nm;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1500);
-    show(okEl,"تحمّل ✓ لقاه في مجلّد Downloads.");
+    show(okEl,"تحمّل ✓ لقاه في مجلّد Downloads."); exportDone(nm);
   });
   $("share").addEventListener("click",async function(){
     hide(okEl);
     if(!finalCodes.length){ okEl.className="msg warn"; show(okEl,"ما كاش أكواد باش نشاركو."); return; }
     okEl.className="msg ok";
-    const text=buildText();
-    // best: share the actual .txt file (opens Telegram, Gmail, Bluetooth...)
+    const text=buildText(); const nm=outName();
     try{
-      const file=new File([text],outName(),{type:"text/plain"});
+      const file=new File([text],nm,{type:"text/plain"});
       if(navigator.canShare && navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:outName()});
-        return;
+        await navigator.share({files:[file],title:nm});
+        exportDone(nm); return;
       }
     }catch(err){ if(err&&err.name==="AbortError") return; }
-    // fallback: share as plain text
     try{
-      if(navigator.share){ await navigator.share({title:outName(),text:text}); return; }
+      if(navigator.share){ await navigator.share({title:nm,text:text}); exportDone(nm); return; }
     }catch(err){ if(err&&err.name==="AbortError") return; }
-    // last resort: download
     const blob=new Blob([text],{type:"text/plain;charset=utf-8"}), url=URL.createObjectURL(blob);
-    const a=document.createElement("a"); a.href=url; a.download=outName();
+    const a=document.createElement("a"); a.href=url; a.download=nm;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
-    show(okEl,"المشاركة ماشي مدعومة هنا — تحمّل الملف في Downloads.");
+    show(okEl,"المشاركة ماشي مدعومة هنا — تحمّل الملف في Downloads."); exportDone(nm);
   });
   $("copy").addEventListener("click",async function(){
     if(!finalCodes.length) return; const txt=finalCodes.join("\n");
@@ -647,12 +664,27 @@
   });
   // ---- gallery of saved code photos ----
   const galleryBtn=$("galleryBtn"), galleryBox=$("gallery"), gsearch=$("gsearch"), glist=$("glist");
+  const batchSel=$("batchSel"), delBatchBtn=$("delBatch");
   const lightbox=$("lightbox"), lbimg=$("lbimg"), lbcode=$("lbcode");
-  function updateGalleryBtn(){ galleryBtn.style.display=Object.keys(codeImages).length?"block":"none"; }
+  function updateGalleryBtn(){ galleryBtn.style.display=(Object.keys(codeImages).length||batches.length)?"block":"none"; }
+  function fillBatchSel(){
+    const cur=batchSel.value;
+    batchSel.innerHTML="";
+    const optAll=document.createElement("option"); optAll.value="__all__"; optAll.textContent="الكل"; batchSel.appendChild(optAll);
+    for(let i=batches.length-1;i>=0;i--){ const b=batches[i];
+      const o=document.createElement("option"); o.value=String(i); o.textContent=b.name; batchSel.appendChild(o); }
+    if(cur && [...batchSel.options].some(o=>o.value===cur)) batchSel.value=cur;
+  }
+  function codesForView(){
+    const sel=batchSel.value;
+    if(sel && sel!=="__all__" && batches[+sel]){ return batches[+sel].codes.filter(c=>codeImages[c]); }
+    return Object.keys(codeImages);
+  }
   function refreshGallery(){
-    updateGalleryBtn();
+    updateGalleryBtn(); fillBatchSel();
+    delBatchBtn.style.display=(batchSel.value && batchSel.value!=="__all__")?"block":"none";
     const q=(gsearch.value||"").replace(/\D/g,"");
-    const codes=Object.keys(codeImages).filter(c=>!q||c.indexOf(q)!==-1);
+    const codes=codesForView().filter(c=>!q||c.indexOf(q)!==-1);
     glist.innerHTML="";
     if(!codes.length){ glist.innerHTML='<p class="hint">ما كاش صور'+(q?" لهاذ البحث":"")+'.</p>'; return; }
     for(const c of codes){
@@ -663,8 +695,6 @@
       const del=document.createElement("button"); del.className="ic-btn"; del.textContent="🗑"; del.title="حذف الصورة والكود";
       del.addEventListener("click",()=>{
         delete codeImages[c]; saveImages();
-        const idx=rawCodes.indexOf(c); if(idx!==-1){ rawCodes.splice(idx,1); saveCodes(); }
-        // remove all duplicates of this code too
         rawCodes=rawCodes.filter(x=>x!==c); saveCodes();
         render(); refreshGallery();
       });
@@ -673,6 +703,16 @@
   }
   galleryBtn.addEventListener("click",()=>{ galleryBox.classList.toggle("on"); if(galleryBox.classList.contains("on")) refreshGallery(); });
   gsearch.addEventListener("input",refreshGallery);
+  batchSel.addEventListener("change",refreshGallery);
+  delBatchBtn.addEventListener("click",function(){
+    const sel=batchSel.value; if(!sel||sel==="__all__"||!batches[+sel]) return;
+    const b=batches[+sel];
+    for(const c of b.codes){ if(codeImages[c]) delete codeImages[c]; }
+    saveImages();
+    batches.splice(+sel,1); saveBatches();
+    batchSel.value="__all__";
+    refreshGallery();
+  });
 
   // type a code -> show its saved photo
   const lookupEl=$("lookup"), lookupResult=$("lookupResult");
