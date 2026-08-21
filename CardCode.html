@@ -712,22 +712,38 @@
 
   // type a code -> show its saved photo
   const lookupEl=$("lookup"), lookupResult=$("lookupResult");
+  // count differing positions for same-length strings (Hamming distance)
+  function diffCount(a,b){ if(a.length!==b.length) return 99; let d=0; for(let i=0;i<a.length;i++){ if(a[i]!==b[i]){ d++; if(d>3) return d; } } return d; }
   function doLookup(){
     const q=(lookupEl.value||"").replace(/\D/g,"");
     lookupResult.innerHTML="";
     if(!q){ return; }
-    // match exact, or code that ends with / contains what she typed
     const keys=Object.keys(codeImages);
+    // 1) exact / contains / endsWith
     let hits=keys.filter(c=>c===q);
-    if(!hits.length) hits=keys.filter(c=>c.endsWith(q));
-    if(!hits.length) hits=keys.filter(c=>c.indexOf(q)!==-1);
+    if(!hits.length) hits=keys.filter(c=>c.endsWith(q)||c.indexOf(q)!==-1);
+    let approx=false;
+    // 2) fuzzy: same length but 1–2 wrong digits (typical OCR mistakes)
+    if(!hits.length && q.length>=6){
+      const scored=keys.map(c=>({c,d:diffCount(c,q)})).filter(x=>x.d<=2).sort((a,b)=>a.d-b.d);
+      if(scored.length){ hits=scored.map(x=>x.c); approx=true; }
+    }
     if(!hits.length){ lookupResult.innerHTML='<p class="hint">ما كاش صورة لهاذ الكود (يمكن جا من الإكسل، ما تصوّرش).</p>'; return; }
+    if(approx){ const p=document.createElement("p"); p.className="hint"; p.textContent="⚠ ما لقيتش الكود بالضبط، بصح هاذو قريبين منّو (يمكن OCR غلط في رقم) — شوفي الصورة وصحّحي:"; lookupResult.appendChild(p); }
     for(const c of hits.slice(0,5)){
       const row=document.createElement("div"); row.className="grow";
       const img=document.createElement("img"); img.src=codeImages[c]; img.alt=c;
       img.addEventListener("click",()=>{ lbimg.src=codeImages[c]; lbcode.textContent=c; lightbox.classList.add("on"); });
       const span=document.createElement("div"); span.className="gc"; span.textContent=c;
-      row.appendChild(img); row.appendChild(span); lookupResult.appendChild(row);
+      const edit=document.createElement("button"); edit.className="ic-btn"; edit.textContent="✏️"; edit.title="صحّح هذا الكود";
+      edit.addEventListener("click",()=>{
+        const nv=prompt("صحّح الكود:",c); if(nv==null) return;
+        const cl=String(nv).replace(/\s+/g,""); if(!/^\d+$/.test(cl)){ alert("أرقام برك."); return; }
+        if(cl!==c){ codeImages[cl]=codeImages[c]; delete codeImages[c]; saveImages();
+          const i=rawCodes.indexOf(c); if(i!==-1){ rawCodes[i]=cl; saveCodes(); render(); } }
+        doLookup(); refreshGallery();
+      });
+      row.appendChild(img); row.appendChild(span); row.appendChild(edit); lookupResult.appendChild(row);
     }
   }
   lookupEl.addEventListener("input",doLookup);
