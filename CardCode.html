@@ -97,9 +97,14 @@
   .chip .big{font-size:26px;font-weight:800;color:var(--accent);line-height:1}
   .chip.warn .big{color:var(--warn)}
   .chip .lbl{font-size:12px;color:var(--muted);margin-top:5px}
-  .preview{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
-    max-height:220px;overflow:auto;font-family:ui-monospace,monospace;font-size:13px;line-height:1.9;
-    color:var(--ink);direction:ltr;text-align:left;white-space:pre}
+  .preview{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px;
+    max-height:300px;overflow:auto;direction:ltr}
+  .crow{display:flex;align-items:center;gap:6px;padding:5px 6px;border-bottom:1px solid rgba(34,82,92,.4)}
+  .crow:last-child{border-bottom:0}
+  .crow .cc{flex:1;font-family:ui-monospace,monospace;font-size:15px;color:var(--ink);word-break:break-all}
+  .crow .cc.bad{color:var(--warn)}
+  .ic-btn{background:transparent;border:0;font-size:16px;padding:4px 6px;cursor:pointer;border-radius:6px}
+  .ic-btn:active{background:rgba(255,255,255,.08)}
   .msg{padding:12px 14px;border-radius:10px;font-size:13px;margin-top:12px;display:none;line-height:1.6}
   .msg.show{display:block}
   .msg.err{background:rgba(255,107,107,.12);border:1px solid var(--danger);color:#ffd0d0}
@@ -154,6 +159,20 @@
     <button class="btn btn-primary" id="camBtn">حلّ الكاميرا</button>
     <button class="btn btn-primary" id="shotBtn" style="display:none">صوّر واقرا الكود</button>
 
+    <div class="row" style="margin-top:6px">
+      <div class="t">سكان أوتوماتيكي<small>يصوّر ويزيد الأكواد الصحيحة وحدو</small></div>
+      <label class="sw"><input type="checkbox" id="auto"><span></span></label>
+    </div>
+    <div class="row">
+      <div class="t">صوت (بيب) عند التقاط كود<small>ينبّهك كي يتزاد كود</small></div>
+      <label class="sw"><input type="checkbox" id="beepOn" checked><span></span></label>
+    </div>
+    <div class="row">
+      <div class="t">الوقت بين التصويرات<small>بالثانية</small></div>
+      <div style="width:96px"><input type="text" id="interval" inputmode="decimal" value="2" class="code-input" style="font-size:16px;letter-spacing:0;padding:10px"></div>
+    </div>
+    <p class="hint" id="autoHint" style="margin:0;display:none">الأوتو يزيد برك الأكواد اللي طولهم صحيح (وبدايتهم إلا حطّيتيها). الباقي يتجاهلو — راجعيهم بالتصوير اليدوي.</p>
+
     <div class="confirm" id="confirm">
       <img class="cap-thumb" id="thumb" alt="">
       <label>الكود المقروء — تأكّدو وصحّح إلا لزم</label>
@@ -178,8 +197,9 @@
   <!-- Output settings -->
   <div class="card">
     <div class="head"><div class="n">⚙</div><h2>إعدادات الإخراج</h2></div>
-    <label for="fname">إسم ملف Texte</label>
-    <input type="text" id="fname" autocomplete="off" placeholder="card_codes" />
+    <label for="fname">لاحقة إسم الملف (اختياري)</label>
+    <input type="text" id="fname" autocomplete="off" placeholder="مثال: mobilis" />
+    <p class="hint" style="margin:8px 0 0">إسم الملف يولّي: اللاحقة + التاريخ والوقت. مثال: <b>mobilis_2026-08-21_1229.txt</b></p>
     <div style="height:14px"></div>
     <label for="prefix">بداية الكود (اختياري)</label>
     <input type="text" id="prefix" inputmode="numeric" autocomplete="off" placeholder="مثال: 55" class="code-input" style="font-size:16px;letter-spacing:0">
@@ -243,6 +263,9 @@
 
   // ---- shared data ----
   let rawCodes=[], finalCodes=[];
+  const CODES_KEY="cardcode_codes_v1";
+  try{ const s=JSON.parse(localStorage.getItem(CODES_KEY)||"[]"); if(Array.isArray(s)) rawCodes=s.map(String); }catch(_){}
+  function saveCodes(){ try{ localStorage.setItem(CODES_KEY, JSON.stringify(rawCodes)); }catch(_){} }
   const codeImages={};   // code -> dataURL (photo of the scanned code)
   const IMG_KEY="cardcode_imgs_v1";
   try{ const saved=JSON.parse(localStorage.getItem(IMG_KEY)||"{}"); if(saved&&typeof saved==="object") Object.assign(codeImages,saved); }catch(_){}
@@ -279,13 +302,46 @@
     dupEl.textContent=dupRemoved.toLocaleString("en-US");
     badEl.textContent=bad.toLocaleString("en-US");
     if(warnMsg) show(warnEl,warnMsg); else hide(warnEl);
-    const shown=list.slice(0,80).join("\n");
-    previewEl.textContent=list.length?(shown+(list.length>80?"\n… +"+(list.length-80):"")):"—";
+    renderList(list, expLen());
     if(rawCodes.length) resultCard.classList.add("show");
+  }
+  function renderList(list, L){
+    previewEl.innerHTML="";
+    if(!list.length){ previewEl.textContent="—"; return; }
+    const cap=Math.min(list.length,400);
+    for(let i=0;i<cap;i++){
+      const v=list[i];
+      const row=document.createElement("div"); row.className="crow";
+      const bad=(L&&v.length!==L);
+      const code=document.createElement("span"); code.className="cc"+(bad?" bad":""); code.textContent=v;
+      const edit=document.createElement("button"); edit.className="ic-btn"; edit.textContent="✏️"; edit.title="تعديل";
+      edit.addEventListener("click",()=>editCode(i));
+      const del=document.createElement("button"); del.className="ic-btn"; del.textContent="🗑"; del.title="حذف";
+      del.addEventListener("click",()=>deleteCode(i));
+      row.appendChild(code); row.appendChild(edit); row.appendChild(del);
+      previewEl.appendChild(row);
+    }
+    if(list.length>cap){ const m=document.createElement("div"); m.className="hint"; m.textContent="… +"+(list.length-cap)+" زيد"; previewEl.appendChild(m); }
+  }
+  function editCode(i){
+    const cur=finalCodes[i]; if(cur==null) return;
+    const nv=prompt("صحّح الكود:",cur);
+    if(nv==null) return;
+    const clean=String(nv).replace(/\s+/g,"");
+    if(!/^\d+$/.test(clean)){ alert("لازم أرقام برك."); return; }
+    if(clean===cur) return;
+    if(codeImages[cur]){ codeImages[clean]=codeImages[cur]; if(clean!==cur) delete codeImages[cur]; saveImages(); }
+    const nl=finalCodes.slice(); nl[i]=clean; rawCodes=nl; saveCodes(); render();
+  }
+  function deleteCode(i){
+    const cur=finalCodes[i];
+    const nl=finalCodes.slice(); nl.splice(i,1); rawCodes=nl; saveCodes();
+    if(cur&&codeImages[cur]){ delete codeImages[cur]; saveImages(); }
+    render();
   }
   function addCodes(arr){
     for(let v of arr){ if(v==null)continue; v=String(v).trim().replace(/\s+/g,""); if(v) rawCodes.push(v); }
-    render();
+    saveCodes(); render();
   }
   dedupEl.addEventListener("change",render);
   validateEl.addEventListener("change",render);
@@ -334,6 +390,20 @@
   const busyEl=$("busy"), flashEl=$("flash"), scanErr=$("scanErr");
   const confirmBox=$("confirm"), thumbEl=$("thumb"), codeInput=$("codeInput"), codeWarn=$("codeWarn");
   let stream=null, worker=null;
+  const beepEl=$("beepOn");
+  function beep(){
+    if(!beepEl||!beepEl.checked) return;
+    try{
+      const Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) return;
+      const ctx=beep._c||(beep._c=new Ctx());
+      if(ctx.state==="suspended") ctx.resume();
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.frequency.value=920; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(.14,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.15);
+      o.start(); o.stop(ctx.currentTime+.16);
+    }catch(_){}
+  }
 
   async function openCam(){
     hide(scanErr);
@@ -342,9 +412,10 @@
     try{
       stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
       videoEl.srcObject=stream; await videoEl.play();
-      scanBox.classList.add("on"); camBtn.style.display="none"; shotBtn.style.display="block";
+      scanBox.classList.add("on"); camBtn.style.display="none"; shotBtn.style.display=autoEl&&autoEl.checked?"none":"block";
       confirmBox.classList.remove("on");
       ensureWorker().catch(()=>{}); // preload OCR engine while user frames the card
+      if(autoEl&&autoEl.checked && !autoRunning){ autoRunning=true; autoTick(); }
     }catch(err){
       let m="ما نجمناش نحلّو الكاميرا.";
       if(err&&err.name==="NotAllowedError") m="لازم تسمح للكاميرا، حلّ الإذن وعاود.";
@@ -353,6 +424,7 @@
     }
   }
   function closeCam(){
+    autoRunning=false;
     if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
     scanBox.classList.remove("on"); camBtn.style.display="block"; shotBtn.style.display="none";
   }
@@ -471,6 +543,7 @@
     addCodes([v]);
     if(thumbEl.src && thumbEl.src.indexOf("data:")===0){ codeImages[v]=thumbEl.src; saveImages(); refreshGallery(); }
     backToShot();
+    beep();
     if(navigator.vibrate) navigator.vibrate(50);
   });
   $("retake").addEventListener("click",backToShot);
@@ -478,8 +551,48 @@
   shotBtn.addEventListener("click",capture);
   window.addEventListener("pagehide",closeCam);
 
+  // ---- Auto-scan ----
+  const autoEl=$("auto"), intervalEl=$("interval"), autoHint=$("autoHint");
+  let autoRunning=false;
+  const autoSeen=new Set();
+  function intervalMs(){ let s=parseFloat((intervalEl.value||"").replace(",",".")); if(!(s>0)) s=2; if(s<0.8) s=0.8; return s*1000; }
+  function isClean(v){ const L=expLen(), P=getPrefix(); if(!/^\d+$/.test(v)) return false; if(L&&v.length!==L) return false; if(P&&v.indexOf(P)!==0) return false; return true; }
+  async function autoTick(){
+    if(!autoRunning || !stream) return;
+    try{
+      const c=cropGuide();
+      const txt=await readCode(c);
+      if(txt && isClean(txt) && !autoSeen.has(txt)){
+        autoSeen.add(txt);
+        addCodes([txt]);
+        const img=c.toDataURL("image/jpeg",0.7);
+        codeImages[txt]=img; saveImages(); refreshGallery();
+        flashEl.classList.remove("hit"); void flashEl.offsetWidth; flashEl.classList.add("hit");
+        beep();
+        try{ if(navigator.vibrate) navigator.vibrate(50); }catch(_){}
+      }
+    }catch(_){}
+    if(autoRunning) setTimeout(autoTick, intervalMs());
+  }
+  function startAuto(){
+    if(autoRunning) return;
+    autoRunning=true; shotBtn.style.display="none"; confirmBox.classList.remove("on");
+    if(!stream){ openCam().then(()=>{ if(autoRunning) autoTick(); }); }
+    else autoTick();
+  }
+  function stopAuto(){ autoRunning=false; if(stream) shotBtn.style.display="block"; }
+  autoEl.addEventListener("change",function(){
+    autoHint.style.display=autoEl.checked?"block":"none";
+    if(autoEl.checked) startAuto(); else stopAuto();
+  });
+
   // ---- Output ----
-  const outName=()=>((fnameEl.value.trim()||"card_codes").replace(/\.txt$/i,""))+".txt";
+  const outName=()=>{
+    const p=n=>String(n).padStart(2,"0"); const d=new Date();
+    const stamp=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes());
+    let suf=(fnameEl.value||"").trim().replace(/\.txt$/i,"").replace(/[^\w\-]+/g,"_").replace(/^_+|_+$/g,"");
+    return (suf?suf+"_":"")+stamp+".txt";
+  };
   const buildText=()=>finalCodes.join("\r\n")+"\r\n";
   const okEl=$("okmsg");
   $("download").addEventListener("click",async function(){
@@ -579,7 +692,8 @@
   updateGalleryBtn();
 
   $("clear").addEventListener("click",function(){
-    rawCodes=[]; render(); resultCard.classList.remove("show"); hide(okEl);
+    rawCodes=[]; saveCodes(); render(); resultCard.classList.remove("show"); hide(okEl);
+    try{ autoSeen.clear(); }catch(_){}
   });
 })();
 </script>
