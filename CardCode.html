@@ -184,6 +184,7 @@
       </div>
     </div>
     <div class="msg err" id="scanErr"></div>
+    <button class="btn btn-ghost" id="resetSeen">🔄 تصفية السكان (بداية جديدة)</button>
   </div>
 
   <!-- Lookup: type a code -> show its photo -->
@@ -595,6 +596,11 @@
   autoEl.addEventListener("change",function(){
     if(autoEl.checked) startAuto(); else stopAuto();
   });
+  $("resetSeen").addEventListener("click",function(){
+    try{ autoSeen.clear(); }catch(_){}
+    autoStatus("✓ تصفّى — يقدر يعاود يشوف نفس الكروت.");
+    const b=$("resetSeen"), o=b.textContent; b.textContent="تصفّى ✓"; setTimeout(()=>b.textContent=o,1200);
+  });
 
   // ---- Output ----
   const outName=()=>{
@@ -705,6 +711,7 @@
     // remove only the CODES of this batch from the list — keep the images for lookup/correction
     const set=new Set(b.codes);
     rawCodes=rawCodes.filter(x=>!set.has(x)); saveCodes();
+    try{ for(const c of b.codes) autoSeen.delete(c); }catch(_){}
     batches.splice(+sel,1); saveBatches();
     batchSel.value="__all__";
     render(); refreshGallery();
@@ -751,7 +758,7 @@
   lightbox.addEventListener("click",e=>{ if(e.target===lightbox) lightbox.classList.remove("on"); });
   $("clearImgs").addEventListener("click",function(){
     for(const k in codeImages) delete codeImages[k];
-    saveImages(); refreshGallery(); galleryBox.classList.remove("on");
+    saveImages(); try{ autoSeen.clear(); }catch(_){} refreshGallery(); galleryBox.classList.remove("on");
   });
   updateGalleryBtn();
 
