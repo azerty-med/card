@@ -606,18 +606,12 @@
   };
   const buildText=()=>finalCodes.join("\r\n")+"\r\n";
   const okEl=$("okmsg");
-  // after a successful export: record a batch (filename + its codes/images), then offer to clear the list
-  function exportDone(name){
-    if(finalCodes.length){
-      batches.push({name:name, ts:Date.now(), codes:finalCodes.slice()}); saveBatches();
-      refreshGallery();
-    }
-    setTimeout(function(){
-      if(confirm("تحبي تمسحي الأكواد من القائمة؟\n(الصور تبقى محفوظة في الدفعة للمراجعة)")){
-        rawCodes=[]; saveCodes(); try{autoSeen.clear();}catch(_){}
-        render(); resultCard.classList.remove("show");
-      }
-    },300);
+  // every export records a batch (filename + its codes/images). No auto-delete — user deletes batches herself.
+  function recordBatch(name){
+    if(!finalCodes.length) return;
+    // avoid duplicate consecutive batch with same name+codes
+    batches.push({name:name, ts:Date.now(), codes:finalCodes.slice()});
+    saveBatches(); refreshGallery();
   }
   $("download").addEventListener("click",async function(){
     hide(okEl);
@@ -627,34 +621,35 @@
       try{ const h=await window.showSaveFilePicker({suggestedName:nm,
         types:[{description:"Fichier texte",accept:{"text/plain":[".txt"]}}]});
         const w=await h.createWritable(); await w.write(text); await w.close();
-        show(okEl,"تحفظ ✓ في المكان اللي إخترتو."); exportDone(nm); return;
+        show(okEl,"تحفظ ✓ — تصنعت دفعة: "+nm); recordBatch(nm); return;
       }catch(err){ if(err&&err.name==="AbortError") return; }
     }
     const blob=new Blob([text],{type:"text/plain;charset=utf-8"}), url=URL.createObjectURL(blob);
     const a=document.createElement("a"); a.href=url; a.download=nm;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1500);
-    show(okEl,"تحمّل ✓ لقاه في مجلّد Downloads."); exportDone(nm);
+    show(okEl,"تحمّل ✓ — تصنعت دفعة: "+nm); recordBatch(nm);
   });
   $("share").addEventListener("click",async function(){
     hide(okEl);
     if(!finalCodes.length){ okEl.className="msg warn"; show(okEl,"ما كاش أكواد باش نشاركو."); return; }
     okEl.className="msg ok";
     const text=buildText(); const nm=outName();
+    // record the batch BEFORE opening the share sheet (share result isn't reliably reported)
+    recordBatch(nm);
+    show(okEl,"تصنعت دفعة: "+nm+" — تقدري تمسحيها من المعرض كي تكملي.");
     try{
       const file=new File([text],nm,{type:"text/plain"});
       if(navigator.canShare && navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:nm});
-        exportDone(nm); return;
+        await navigator.share({files:[file],title:nm}); return;
       }
     }catch(err){ if(err&&err.name==="AbortError") return; }
     try{
-      if(navigator.share){ await navigator.share({title:nm,text:text}); exportDone(nm); return; }
+      if(navigator.share){ await navigator.share({title:nm,text:text}); return; }
     }catch(err){ if(err&&err.name==="AbortError") return; }
     const blob=new Blob([text],{type:"text/plain;charset=utf-8"}), url=URL.createObjectURL(blob);
     const a=document.createElement("a"); a.href=url; a.download=nm;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
-    show(okEl,"المشاركة ماشي مدعومة هنا — تحمّل الملف في Downloads."); exportDone(nm);
   });
   $("copy").addEventListener("click",async function(){
     if(!finalCodes.length) return; const txt=finalCodes.join("\n");
