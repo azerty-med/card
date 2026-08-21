@@ -199,7 +199,7 @@
     <div class="head"><div class="n">⚙</div><h2>إعدادات الإخراج</h2></div>
     <label for="fname">لاحقة إسم الملف (اختياري)</label>
     <input type="text" id="fname" autocomplete="off" placeholder="مثال: mobilis" />
-    <p class="hint" style="margin:8px 0 0">إسم الملف يولّي: اللاحقة + التاريخ والوقت. مثال: <b>mobilis_2026-08-21_1229.txt</b></p>
+    <p class="hint" style="margin:8px 0 0">إسم الملف: اللاحقة + (العدد) + التاريخ والوقت. مثال: <b>mobilis_(48)_2026-08-21_1249.txt</b></p>
     <div style="height:14px"></div>
     <label for="prefix">بداية الكود (اختياري)</label>
     <input type="text" id="prefix" inputmode="numeric" autocomplete="off" placeholder="مثال: 55" class="code-input" style="font-size:16px;letter-spacing:0">
@@ -415,7 +415,7 @@
       scanBox.classList.add("on"); camBtn.style.display="none"; shotBtn.style.display=autoEl&&autoEl.checked?"none":"block";
       confirmBox.classList.remove("on");
       ensureWorker().catch(()=>{}); // preload OCR engine while user frames the card
-      if(autoEl&&autoEl.checked && !autoRunning){ autoRunning=true; autoTick(); }
+      if(autoEl&&autoEl.checked && !autoRunning){ autoRunning=true; autoLoop(); }
     }catch(err){
       let m="ما نجمناش نحلّو الكاميرا.";
       if(err&&err.name==="NotAllowedError") m="لازم تسمح للكاميرا، حلّ الإذن وعاود.";
@@ -555,34 +555,37 @@
   const autoEl=$("auto"), intervalEl=$("interval"), autoHint=$("autoHint");
   let autoRunning=false;
   const autoSeen=new Set();
-  function intervalMs(){ let s=parseFloat((intervalEl.value||"").replace(",",".")); if(!(s>0)) s=2; if(s<0.8) s=0.8; return s*1000; }
+  function gapMs(){ let s=parseFloat((intervalEl.value||"").replace(",",".")); if(!(s>=0)) s=0.3; if(s<0) s=0; return s*1000; }
   function isClean(v){ const L=expLen(), P=getPrefix(); if(!/^\d+$/.test(v)) return false; if(L&&v.length!==L) return false; if(P&&v.indexOf(P)!==0) return false; return true; }
-  async function autoTick(){
-    if(!autoRunning || !stream) return;
-    try{
-      const c=cropGuide();
-      const txt=await readCode(c);
-      if(txt && isClean(txt) && !autoSeen.has(txt)){
-        autoSeen.add(txt);
-        addCodes([txt]);
-        const img=c.toDataURL("image/jpeg",0.7);
-        codeImages[txt]=img; saveImages(); refreshGallery();
-        flashEl.classList.remove("hit"); void flashEl.offsetWidth; flashEl.classList.add("hit");
-        beep();
-        try{ if(navigator.vibrate) navigator.vibrate(50); }catch(_){}
-      }
-    }catch(_){}
-    if(autoRunning) setTimeout(autoTick, intervalMs());
+  function autoStatus(t){ if(autoHint){ autoHint.style.display="block"; autoHint.textContent=t; } }
+  async function autoLoop(){
+    // continuous: read frame after frame; add clean new codes without stalling on a fixed timer
+    while(autoRunning && stream){
+      let txt="";
+      try{ txt=await readCode(cropGuide()); }catch(_){}
+      if(!autoRunning) break;
+      if(txt && isClean(txt)){
+        if(!autoSeen.has(txt)){
+          autoSeen.add(txt);
+          const img=cropGuide().toDataURL("image/jpeg",0.7);
+          addCodes([txt]); codeImages[txt]=img; saveImages(); refreshGallery();
+          flashEl.classList.remove("hit"); void flashEl.offsetWidth; flashEl.classList.add("hit");
+          beep(); try{ if(navigator.vibrate) navigator.vibrate(50); }catch(_){}
+          autoStatus("✓ زيد: "+txt);
+        } else autoStatus("↺ تزاد قبل: "+txt);
+      } else autoStatus(txt?("… "+txt+" مازال، ثبّتي"):"… يقرا…");
+      const g=gapMs(); if(g>0) await new Promise(r=>setTimeout(r,g));
+    }
   }
   function startAuto(){
     if(autoRunning) return;
     autoRunning=true; shotBtn.style.display="none"; confirmBox.classList.remove("on");
-    if(!stream){ openCam().then(()=>{ if(autoRunning) autoTick(); }); }
-    else autoTick();
+    autoStatus("… يقرا…");
+    if(!stream){ openCam().then(()=>{ if(autoRunning) autoLoop(); }); }
+    else autoLoop();
   }
-  function stopAuto(){ autoRunning=false; if(stream) shotBtn.style.display="block"; }
+  function stopAuto(){ autoRunning=false; if(stream) shotBtn.style.display="block"; if(autoHint){ autoHint.style.display="none"; autoHint.textContent=""; } }
   autoEl.addEventListener("change",function(){
-    autoHint.style.display=autoEl.checked?"block":"none";
     if(autoEl.checked) startAuto(); else stopAuto();
   });
 
@@ -591,7 +594,8 @@
     const p=n=>String(n).padStart(2,"0"); const d=new Date();
     const stamp=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes());
     let suf=(fnameEl.value||"").trim().replace(/\.txt$/i,"").replace(/[^\w\-]+/g,"_").replace(/^_+|_+$/g,"");
-    return (suf?suf+"_":"")+stamp+".txt";
+    const n=finalCodes.length;
+    return (suf?suf+"_":"")+"("+n+")_"+stamp+".txt";
   };
   const buildText=()=>finalCodes.join("\r\n")+"\r\n";
   const okEl=$("okmsg");
@@ -656,7 +660,15 @@
       const img=document.createElement("img"); img.src=codeImages[c]; img.alt=c;
       img.addEventListener("click",()=>{ lbimg.src=codeImages[c]; lbcode.textContent=c; lightbox.classList.add("on"); });
       const span=document.createElement("div"); span.className="gc"; span.textContent=c;
-      row.appendChild(img); row.appendChild(span); glist.appendChild(row);
+      const del=document.createElement("button"); del.className="ic-btn"; del.textContent="🗑"; del.title="حذف الصورة والكود";
+      del.addEventListener("click",()=>{
+        delete codeImages[c]; saveImages();
+        const idx=rawCodes.indexOf(c); if(idx!==-1){ rawCodes.splice(idx,1); saveCodes(); }
+        // remove all duplicates of this code too
+        rawCodes=rawCodes.filter(x=>x!==c); saveCodes();
+        render(); refreshGallery();
+      });
+      row.appendChild(img); row.appendChild(span); row.appendChild(del); glist.appendChild(row);
     }
   }
   galleryBtn.addEventListener("click",()=>{ galleryBox.classList.toggle("on"); if(galleryBox.classList.contains("on")) refreshGallery(); });
