@@ -138,7 +138,7 @@
   <div class="brand">
     <div class="logo">C</div>
     <div><h1>Card Code</h1><p>إستخرج · صوّر الكود · حوّل لملف Texte</p>
-    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.0 · 2026-08-22</span></p></div>
+    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.1 · 2026-08-23</span></p></div>
   </div>
 
   <!-- Source A: Excel -->
@@ -252,6 +252,20 @@
     </div>
     <button class="btn btn-danger" id="clear">مسح الكل</button>
     <div class="msg ok" id="okmsg"></div>
+  </div>
+
+  <!-- Backup: export/import between phone and PC -->
+  <div class="card">
+    <div class="head"><div class="n">💾</div><h2>نسخة احتياطية (نقل للميكرو)</h2></div>
+    <p class="hint">صدّري ملف نسخة فيه <b>كل الأكواد والصور والدفعات</b>، إبعثيه للميكرو (Telegram/USB)، ومن بعد استوردي — باش تصحّحي من الميكرو.</p>
+    <button class="btn btn-primary" id="backupExport">⬇ تصدير نسخة احتياطية</button>
+    <label class="file-drop" for="backupFile" style="margin-top:12px">
+      <span class="ic">⬆</span>
+      <span class="tx" id="backupLabel">استيراد نسخة احتياطية<small>إختاري ملف .ccbak</small></span>
+    </label>
+    <input type="file" id="backupFile" accept=".ccbak,.json,application/json" />
+    <div class="msg ok" id="backupMsg"></div>
+    <div class="msg err" id="backupErr"></div>
   </div>
 
   <div class="lb" id="lightbox">
@@ -818,6 +832,68 @@
   $("clear").addEventListener("click",function(){
     rawCodes=[]; saveCodes(); render(); resultCard.classList.remove("show"); hide(okEl);
     try{ autoSeen.clear(); }catch(_){}
+  });
+
+  // ---- Backup: export / import (move data phone <-> PC) ----
+  const backupMsg=$("backupMsg"), backupErr=$("backupErr"), backupLabel=$("backupLabel");
+  $("backupExport").addEventListener("click",function(){
+    hide(backupMsg); hide(backupErr);
+    try{
+      const data={ app:"CardCode", ver:1, ts:Date.now(),
+        codes:rawCodes, images:codeImages, batches:batches };
+      const txt=JSON.stringify(data);
+      const p=n=>String(n).padStart(2,"0"); const d=new Date();
+      const nm="CardCode_backup_"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes())+".ccbak";
+      // try share first (easy to send to Telegram), else download
+      const file=new File([txt],nm,{type:"application/json"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:nm}).catch(()=>{});
+      }
+      const blob=new Blob([txt],{type:"application/json"}), url=URL.createObjectURL(blob);
+      const a=document.createElement("a"); a.href=url; a.download=nm;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+      backupMsg.className="msg ok"; show(backupMsg,"تصدّرت النسخة ✓ ("+Object.keys(codeImages).length+" صورة) — إبعثيها للميكرو.");
+    }catch(e){ backupErr.className="msg err"; show(backupErr,"فشل التصدير: "+e.message); }
+  });
+  $("backupFile").addEventListener("change",function(){
+    hide(backupMsg); hide(backupErr);
+    const f=$("backupFile").files[0]; if(!f) return;
+    backupLabel.innerHTML=f.name+"<small>يقرا…</small>";
+    const r=new FileReader();
+    r.onerror=()=>{ backupErr.className="msg err"; show(backupErr,"ما نجمناش نقراو الملف."); };
+    r.onload=function(e){
+      try{
+        const data=JSON.parse(e.target.result);
+        if(!data||data.app!=="CardCode") throw new Error("ملف ماشي تاع النسخة الاحتياطية.");
+        let addImg=0, addCode=0, addBatch=0;
+        // merge images
+        if(data.images&&typeof data.images==="object"){
+          for(const k in data.images){ if(!codeImages[k]){ codeImages[k]=data.images[k]; addImg++; } }
+          saveImages();
+        }
+        // merge codes (avoid duplicates)
+        if(Array.isArray(data.codes)){
+          const set=new Set(rawCodes);
+          for(const c of data.codes){ const v=String(c); if(!set.has(v)){ rawCodes.push(v); set.add(v); addCode++; } }
+          saveCodes();
+        }
+        // merge batches (by name+ts)
+        if(Array.isArray(data.batches)){
+          const seen=new Set(batches.map(b=>b.name+"|"+b.ts));
+          for(const b of data.batches){ const key=b.name+"|"+b.ts; if(!seen.has(key)){ batches.push(b); seen.add(key); addBatch++; } }
+          saveBatches();
+        }
+        render(); refreshGallery();
+        backupLabel.innerHTML="استيراد نسخة احتياطية<small>إختاري ملف .ccbak</small>";
+        backupMsg.className="msg ok";
+        show(backupMsg,"تمّ الاستيراد ✓ — زدنا "+addImg+" صورة، "+addCode+" كود، "+addBatch+" دفعة.");
+      }catch(err){
+        backupLabel.innerHTML="استيراد نسخة احتياطية<small>إختاري ملف .ccbak</small>";
+        backupErr.className="msg err"; show(backupErr,"فشل الاستيراد: "+err.message);
+      }
+      $("backupFile").value="";
+    };
+    r.readAsText(f);
   });
 })();
 </script>
