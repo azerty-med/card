@@ -775,13 +775,18 @@
     let hits=keys.filter(c=>c===q);
     if(!hits.length && q.length>=4) hits=keys.filter(c=>c.indexOf(q)!==-1||q.indexOf(c)!==-1);
     let note="";
-    // 2) fuzzy by edit distance — always rank; show close ones, else nearest few
+    // 2) fuzzy by edit distance — only show GENUINELY close matches (avoid misleading look-alikes)
     if(!hits.length){
       const scored=keys.map(c=>({c,d:editDist(c,q)})).sort((a,b)=>a.d-b.d);
-      const tol=Math.max(2, Math.ceil(q.length*0.25)); // ~ up to 25% of length
-      let close=scored.filter(x=>x.d<=tol);
-      if(close.length){ hits=close.slice(0,6).map(x=>x.c); note="⚠ ما لقيتش الكود بالضبط — هاذو الأقرب (يمكن OCR غلط/زاد/نقّص رقم). شوفي الصورة وصحّحي:"; }
-      else { hits=scored.slice(0,3).map(x=>x.c); note="ما لقيتش تطابق قريب. هاذو أقرب 3 صور — إلا ماشي هوما، يمكن الكود ما تصوّرش:"; }
+      const tol=2; // at most 2 differing/missing/extra digits across the WHOLE code
+      const close=scored.filter(x=>x.d<=tol);
+      if(close.length){
+        hits=close.slice(0,6).map(x=>x.c);
+        note="⚠ ما لقيتش الكود بالضبط — هاذو قريبين جدا (فرق رقم ولا رقمين). شوفي الصورة وصحّحي:";
+      } else {
+        lookupResult.innerHTML='<p class="hint">ما كاش صورة قريبة لهاذ الكود. تأكّدي من الأرقام، ولا يمكن الكود ما تصوّرش بالكاميرا.</p>';
+        return;
+      }
     }
     if(note){ const p=document.createElement("p"); p.className="hint"; p.textContent=note; lookupResult.appendChild(p); }
     for(const c of hits.slice(0,6)){
