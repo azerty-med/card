@@ -144,7 +144,7 @@
   <div class="brand">
     <div class="logo">C</div>
     <div><h1>Card Code</h1><p>إستخرج · صوّر الكود · حوّل لملف Texte</p>
-    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.4 · 2026-08-24</span></p></div>
+    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.6 · 2026-08-24</span></p></div>
   </div>
 
   <!-- Batches: exported files list (shown near the top) -->
@@ -267,6 +267,18 @@
       <label for="batchSel" style="margin-top:4px">الدفعة (حسب إسم الملف المصدّر)</label>
       <select id="batchSel" style="width:100%;padding:12px;border-radius:12px;background:var(--bg);border:1px solid var(--line);color:var(--ink);font-size:14px;margin-bottom:10px"></select>
       <input type="text" id="gsearch" autocomplete="off" placeholder="بحث بالكود…">
+      <div id="classifyBar" style="display:none;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px">
+        <div class="hint" style="margin:0 0 8px">صنّفي الصور المختارة في دفعة (حتى القديمة):</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input type="text" id="newBatchName" autocomplete="off" placeholder="إسم قصير مثلا: R1" style="flex:1">
+          <button class="btn btn-primary small" id="assignNew" style="margin:0;width:auto;padding:12px 14px">أنشئ</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <select id="assignSel" style="flex:1;padding:12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:13px"></select>
+          <button class="btn btn-ghost small" id="assignExisting" style="margin:0;width:auto;padding:12px 14px">أضف</button>
+        </div>
+        <div class="hint" id="selCount" style="margin:8px 0 0">مختار: 0</div>
+      </div>
       <div id="glist"></div>
       <button class="btn btn-danger" id="delBatch" style="display:none">مسح أكواد هذه الدفعة (تبقى الصور)</button>
       <button class="btn btn-danger" id="clearImgs">مسح كل الصور المحفوظة</button>
@@ -677,13 +689,13 @@
   });
 
   // ---- Output ----
-  const outName=()=>{
+  function makeName(suffix, count){
     const p=n=>String(n).padStart(2,"0"); const d=new Date();
     const stamp=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes());
-    let suf=(fnameEl.value||"").trim().replace(/\.txt$/i,"").replace(/[^\w\-]+/g,"_").replace(/^_+|_+$/g,"");
-    const n=finalCodes.length;
-    return (suf?suf+"_":"")+"("+n+")_"+stamp+".txt";
-  };
+    let suf=(suffix||"").trim().replace(/\.txt$/i,"").replace(/[^\w\-]+/g,"_").replace(/^_+|_+$/g,"");
+    return (suf?suf+"_":"")+"("+count+")_"+stamp+".txt";
+  }
+  const outName=()=> makeName(fnameEl.value, finalCodes.length);
   const buildText=()=>finalCodes.join("\r\n")+"\r\n";
   const okEl=$("okmsg");
   // every export records a batch (filename + its codes/images). No auto-delete — user deletes batches herself.
@@ -697,7 +709,8 @@
   function fmtTime(ts){ const p=n=>String(n).padStart(2,"0"); const d=new Date(ts||Date.now());
     return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); }
   function exportBatchFile(b){
-    const text=b.codes.join("\r\n")+"\r\n"; const nm=b.name;
+    const text=b.codes.join("\r\n")+"\r\n";
+    const nm=b.label ? makeName(b.label, b.codes.length) : b.name; // refresh count for manual batches
     try{ const file=new File([text],nm,{type:"text/plain"});
       if(navigator.canShare&&navigator.canShare({files:[file]})){ navigator.share({files:[file],title:nm}).catch(()=>{}); }
     }catch(_){}
@@ -714,7 +727,8 @@
       const row=document.createElement("div"); row.className="brow";
       const nm=document.createElement("div"); nm.className="bn"; nm.textContent=b.name;
       const meta=document.createElement("div"); meta.className="bmeta";
-      meta.innerHTML='<span class="bbadge">✅ مصدّر</span> &nbsp; '+(b.codes?b.codes.length:0)+' كود · '+fmtTime(b.ts);
+      const badge=b.exported?'<span class="bbadge">✅ مصدّر</span>':'<span class="bbadge" style="background:rgba(255,207,107,.15);border-color:var(--warn);color:var(--warn)">📁 مصنّفة</span>';
+      meta.innerHTML=badge+' &nbsp; '+(b.codes?b.codes.length:0)+' كود · '+fmtTime(b.ts);
       const btns=document.createElement("div"); btns.className="bbtns";
       const ex=document.createElement("button"); ex.className="btn btn-primary"; ex.textContent="⬇ إعادة تصدير";
       ex.addEventListener("click",()=>exportBatchFile(b));
@@ -782,36 +796,74 @@
     const cur=batchSel.value;
     batchSel.innerHTML="";
     const optAll=document.createElement("option"); optAll.value="__all__"; optAll.textContent="الكل"; batchSel.appendChild(optAll);
+    const optNone=document.createElement("option"); optNone.value="__none__"; optNone.textContent="بلا دفعة (غير مصنّفة)"; batchSel.appendChild(optNone);
     for(let i=batches.length-1;i>=0;i--){ const b=batches[i];
       const o=document.createElement("option"); o.value=String(i); o.textContent=b.name; batchSel.appendChild(o); }
     if(cur && [...batchSel.options].some(o=>o.value===cur)) batchSel.value=cur;
   }
+  function codeInAnyBatch(c){ for(const b of batches){ if(b.codes && b.codes.indexOf(c)!==-1) return true; } return false; }
   function codesForView(){
     const sel=batchSel.value;
+    if(sel==="__none__") return Object.keys(codeImages).filter(c=>!codeInAnyBatch(c));
     if(sel && sel!=="__all__" && batches[+sel]){ return batches[+sel].codes.filter(c=>codeImages[c]); }
     return Object.keys(codeImages);
   }
+  const selectedImgs=new Set();
+  function updateSelCount(){ const el=$("selCount"); if(el) el.textContent="مختار: "+selectedImgs.size; }
+  function fillAssignSel(){
+    const s=$("assignSel"); if(!s) return; s.innerHTML="";
+    if(!batches.length){ const o=document.createElement("option"); o.value=""; o.textContent="(ما كاش دفعات)"; s.appendChild(o); return; }
+    for(let i=batches.length-1;i>=0;i--){ const o=document.createElement("option"); o.value=String(i); o.textContent=batches[i].name; s.appendChild(o); }
+  }
   function refreshGallery(){
     updateGalleryBtn(); fillBatchSel();
-    delBatchBtn.style.display=(batchSel.value && batchSel.value!=="__all__")?"block":"none";
+    delBatchBtn.style.display=(batchSel.value && batchSel.value!=="__all__" && batchSel.value!=="__none__")?"block":"none";
+    $("classifyBar").style.display="block"; fillAssignSel(); updateSelCount();
     const q=(gsearch.value||"").replace(/\D/g,"");
     const codes=codesForView().filter(c=>!q||c.indexOf(q)!==-1);
     glist.innerHTML="";
     if(!codes.length){ glist.innerHTML='<p class="hint">ما كاش صور'+(q?" لهاذ البحث":"")+'.</p>'; return; }
     for(const c of codes){
       const row=document.createElement("div"); row.className="grow";
+      const chk=document.createElement("input"); chk.type="checkbox"; chk.style.cssText="width:20px;height:20px;flex:0 0 auto"; chk.checked=selectedImgs.has(c);
+      chk.addEventListener("change",()=>{ if(chk.checked) selectedImgs.add(c); else selectedImgs.delete(c); updateSelCount(); });
       const img=document.createElement("img"); img.src=codeImages[c]; img.alt=c;
       img.addEventListener("click",()=>{ lbimg.src=codeImages[c]; lbcode.textContent=c; lightbox.classList.add("on"); });
       const span=document.createElement("div"); span.className="gc"; span.textContent=c;
       const del=document.createElement("button"); del.className="ic-btn"; del.textContent="🗑"; del.title="حذف الصورة والكود";
       del.addEventListener("click",()=>{
-        delete codeImages[c]; saveImages();
+        delete codeImages[c]; saveImages(); selectedImgs.delete(c);
         rawCodes=rawCodes.filter(x=>x!==c); saveCodes();
         render(); refreshGallery();
       });
-      row.appendChild(img); row.appendChild(span); row.appendChild(del); glist.appendChild(row);
+      row.appendChild(chk); row.appendChild(img); row.appendChild(span); row.appendChild(del); glist.appendChild(row);
     }
   }
+  function assignToBatch(idx){
+    if(!selectedImgs.size){ alert("إختاري صور الأول (علّمي المربّعات)."); return; }
+    const b=batches[idx]; if(!b) return;
+    if(!b.codes) b.codes=[];
+    const set=new Set(b.codes); let added=0;
+    for(const c of selectedImgs){ if(!set.has(c)){ b.codes.push(c); set.add(c); added++; } }
+    saveBatches(); selectedImgs.clear();
+    refreshGallery(); renderBatches();
+    alert("تصنّفت "+added+" صورة في: "+b.name);
+  }
+  $("assignNew").addEventListener("click",function(){
+    const label=($("newBatchName").value||"").trim();
+    if(!label){ alert("كتبي إسم الدفعة (مثلا R1)."); return; }
+    if(!selectedImgs.size){ alert("إختاري صور الأول."); return; }
+    const codes=[...selectedImgs];
+    const fullName=makeName(label, codes.length); // e.g. R1_(12)_2026-08-24_1530.txt
+    batches.push({name:fullName, label:label, ts:Date.now(), codes:codes, exported:false, manual:true});
+    saveBatches(); $("newBatchName").value=""; selectedImgs.clear();
+    refreshGallery(); renderBatches();
+    alert("تصنّفت "+codes.length+" صورة في دفعة: "+fullName);
+  });
+  $("assignExisting").addEventListener("click",function(){
+    const v=$("assignSel").value; if(v==="") { alert("ما كاش دفعة موجودة — أنشئي وحدة."); return; }
+    assignToBatch(+v);
+  });
   galleryBtn.addEventListener("click",()=>{ galleryBox.classList.toggle("on"); if(galleryBox.classList.contains("on")) refreshGallery(); });
   gsearch.addEventListener("input",refreshGallery);
   batchSel.addEventListener("change",refreshGallery);
