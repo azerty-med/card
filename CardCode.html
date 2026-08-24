@@ -144,7 +144,7 @@
   <div class="brand">
     <div class="logo">C</div>
     <div><h1>Card Code</h1><p>إستخرج · صوّر الكود · حوّل لملف Texte</p>
-    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.2 · 2026-08-23</span></p></div>
+    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.3 · 2026-08-24</span></p></div>
   </div>
 
   <!-- Source A: Excel -->
@@ -231,6 +231,14 @@
     <div class="row">
       <div class="t">فحص الطول<small>ينبّهك إلا كان كود طولو مختلف</small></div>
       <label class="sw"><input type="checkbox" id="validate" checked><span></span></label>
+    </div>
+    <div class="row">
+      <div class="t">إظهار زر صور الأكواد<small>🖼 المعرض في قسم النتيجة</small></div>
+      <label class="sw"><input type="checkbox" id="showGallery" checked><span></span></label>
+    </div>
+    <div class="row">
+      <div class="t">إظهار قسم الدفعات المصدّرة<small>📦 قائمة الملفات المصدّرة</small></div>
+      <label class="sw"><input type="checkbox" id="showBatches" checked><span></span></label>
     </div>
   </div>
 
@@ -401,6 +409,15 @@
   dedupEl.addEventListener("change",render);
   validateEl.addEventListener("change",render);
   expLenEl.addEventListener("input",render);
+  // show/hide toggles for gallery button + batches section (remembered)
+  const showGalleryEl=$("showGallery"), showBatchesEl=$("showBatches");
+  const PREF_KEY="cardcode_prefs_v1";
+  try{ const pr=JSON.parse(localStorage.getItem(PREF_KEY)||"{}");
+    if(pr && typeof pr==="object"){ if(pr.showGallery===false) showGalleryEl.checked=false; if(pr.showBatches===false) showBatchesEl.checked=false; }
+  }catch(_){}
+  function savePrefs(){ try{ localStorage.setItem(PREF_KEY, JSON.stringify({showGallery:showGalleryEl.checked, showBatches:showBatchesEl.checked})); }catch(_){} }
+  showGalleryEl.addEventListener("change",function(){ savePrefs(); updateGalleryBtn(); });
+  showBatchesEl.addEventListener("change",function(){ savePrefs(); renderBatches(); });
 
   // ---- Excel ----
   const fileEl=$("file"), goEl=$("go"), errEl=$("err"), fileLabel=$("fileLabel"), fnameEl=$("fname");
@@ -690,7 +707,7 @@
     b.exported=true; saveBatches(); renderBatches();
   }
   function renderBatches(){
-    if(!batches.length){ batchesCard.style.display="none"; return; }
+    if(!batches.length || !($("showBatches")&&$("showBatches").checked)){ batchesCard.style.display="none"; return; }
     batchesCard.style.display="block"; batchList.innerHTML="";
     for(let i=batches.length-1;i>=0;i--){
       const b=batches[i];
@@ -760,7 +777,7 @@
   const galleryBtn=$("galleryBtn"), galleryBox=$("gallery"), gsearch=$("gsearch"), glist=$("glist");
   const batchSel=$("batchSel"), delBatchBtn=$("delBatch");
   const lightbox=$("lightbox"), lbimg=$("lbimg"), lbcode=$("lbcode");
-  function updateGalleryBtn(){ galleryBtn.style.display=(Object.keys(codeImages).length||batches.length)?"block":"none"; }
+  function updateGalleryBtn(){ galleryBtn.style.display=(($("showGallery")&&$("showGallery").checked)&&(Object.keys(codeImages).length||batches.length))?"block":"none"; if(!($("showGallery")&&$("showGallery").checked)) galleryBox.classList.remove("on"); }
   function fillBatchSel(){
     const cur=batchSel.value;
     batchSel.innerHTML="";
