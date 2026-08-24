@@ -112,6 +112,12 @@
   .crow .cc.bad{color:var(--warn)}
   .ic-btn{background:transparent;border:0;font-size:16px;padding:4px 6px;cursor:pointer;border-radius:6px}
   .ic-btn:active{background:rgba(255,255,255,.08)}
+  .brow{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--bg)}
+  .brow .bn{font-family:ui-monospace,monospace;font-size:13px;color:var(--ink);direction:ltr;text-align:left;word-break:break-all;margin-bottom:4px}
+  .brow .bmeta{font-size:12px;color:var(--muted);margin-bottom:10px}
+  .brow .bbadge{display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--accent);color:var(--accent);font-size:11px;padding:1px 7px;border-radius:999px}
+  .brow .bbtns{display:flex;gap:8px;flex-wrap:wrap}
+  .brow .bbtns .btn{margin-top:0;flex:1;min-width:110px;padding:11px;font-size:14px}
   .msg{padding:12px 14px;border-radius:10px;font-size:13px;margin-top:12px;display:none;line-height:1.6}
   .msg.show{display:block}
   .msg.err{background:rgba(255,107,107,.12);border:1px solid var(--danger);color:#ffd0d0}
@@ -138,7 +144,7 @@
   <div class="brand">
     <div class="logo">C</div>
     <div><h1>Card Code</h1><p>إستخرج · صوّر الكود · حوّل لملف Texte</p>
-    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.1 · 2026-08-23</span></p></div>
+    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.2 · 2026-08-23</span></p></div>
   </div>
 
   <!-- Source A: Excel -->
@@ -252,6 +258,13 @@
     </div>
     <button class="btn btn-danger" id="clear">مسح الكل</button>
     <div class="msg ok" id="okmsg"></div>
+  </div>
+
+  <!-- Batches: exported files list -->
+  <div class="card" id="batchesCard" style="display:none">
+    <div class="head"><div class="n">📦</div><h2>الدفعات المصدّرة</h2></div>
+    <p class="hint">كل دفعة صدّرتيها بإسمها وعلامتها. تقدري تعاودي تصدّري الملف الصافي (أكواد برك للفليكسي)، ولا تشوفي صورها للتصحيح.</p>
+    <div id="batchList"></div>
   </div>
 
   <!-- Backup: export/import between phone and PC -->
@@ -659,9 +672,45 @@
   // every export records a batch (filename + its codes/images). No auto-delete — user deletes batches herself.
   function recordBatch(name){
     if(!finalCodes.length) return;
-    // avoid duplicate consecutive batch with same name+codes
-    batches.push({name:name, ts:Date.now(), codes:finalCodes.slice()});
-    saveBatches(); refreshGallery();
+    batches.push({name:name, ts:Date.now(), codes:finalCodes.slice(), exported:true});
+    saveBatches(); refreshGallery(); renderBatches();
+  }
+  // ---- Batches list (exported files) ----
+  const batchesCard=$("batchesCard"), batchList=$("batchList");
+  function fmtTime(ts){ const p=n=>String(n).padStart(2,"0"); const d=new Date(ts||Date.now());
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); }
+  function exportBatchFile(b){
+    const text=b.codes.join("\r\n")+"\r\n"; const nm=b.name;
+    try{ const file=new File([text],nm,{type:"text/plain"});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){ navigator.share({files:[file],title:nm}).catch(()=>{}); }
+    }catch(_){}
+    const blob=new Blob([text],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=nm;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    b.exported=true; saveBatches(); renderBatches();
+  }
+  function renderBatches(){
+    if(!batches.length){ batchesCard.style.display="none"; return; }
+    batchesCard.style.display="block"; batchList.innerHTML="";
+    for(let i=batches.length-1;i>=0;i--){
+      const b=batches[i];
+      const row=document.createElement("div"); row.className="brow";
+      const nm=document.createElement("div"); nm.className="bn"; nm.textContent=b.name;
+      const meta=document.createElement("div"); meta.className="bmeta";
+      meta.innerHTML='<span class="bbadge">✅ مصدّر</span> &nbsp; '+(b.codes?b.codes.length:0)+' كود · '+fmtTime(b.ts);
+      const btns=document.createElement("div"); btns.className="bbtns";
+      const ex=document.createElement("button"); ex.className="btn btn-primary"; ex.textContent="⬇ إعادة تصدير";
+      ex.addEventListener("click",()=>exportBatchFile(b));
+      const vw=document.createElement("button"); vw.className="btn btn-ghost"; vw.textContent="🖼 صورها";
+      vw.addEventListener("click",()=>{ galleryBox.classList.add("on"); fillBatchSel(); batchSel.value=String(i); refreshGallery(); galleryBox.scrollIntoView({behavior:"smooth",block:"start"}); });
+      const del=document.createElement("button"); del.className="btn btn-danger"; del.textContent="🗑 حذف";
+      del.addEventListener("click",()=>{
+        if(!confirm("حذف هذه الدفعة من القائمة؟ (الصور والأكواد يبقاو)")) return;
+        batches.splice(i,1); saveBatches(); renderBatches(); refreshGallery();
+      });
+      btns.appendChild(ex); btns.appendChild(vw); btns.appendChild(del);
+      row.appendChild(nm); row.appendChild(meta); row.appendChild(btns); batchList.appendChild(row);
+    }
   }
   $("download").addEventListener("click",async function(){
     hide(okEl);
@@ -758,7 +807,7 @@
     try{ for(const c of b.codes) autoSeen.delete(c); }catch(_){}
     batches.splice(+sel,1); saveBatches();
     batchSel.value="__all__";
-    render(); refreshGallery();
+    render(); refreshGallery(); renderBatches();
   });
 
   // type a code -> show its saved photo
@@ -828,6 +877,7 @@
     saveImages(); try{ autoSeen.clear(); }catch(_){} refreshGallery(); galleryBox.classList.remove("on");
   });
   updateGalleryBtn();
+  renderBatches();
 
   $("clear").addEventListener("click",function(){
     rawCodes=[]; saveCodes(); render(); resultCard.classList.remove("show"); hide(okEl);
@@ -883,7 +933,7 @@
           for(const b of data.batches){ const key=b.name+"|"+b.ts; if(!seen.has(key)){ batches.push(b); seen.add(key); addBatch++; } }
           saveBatches();
         }
-        render(); refreshGallery();
+        render(); refreshGallery(); renderBatches();
         backupLabel.innerHTML="استيراد نسخة احتياطية<small>إختاري ملف .ccbak</small>";
         backupMsg.className="msg ok";
         show(backupMsg,"تمّ الاستيراد ✓ — زدنا "+addImg+" صورة، "+addCode+" كود، "+addBatch+" دفعة.");
