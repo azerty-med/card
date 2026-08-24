@@ -144,7 +144,7 @@
   <div class="brand">
     <div class="logo">C</div>
     <div><h1>Card Code</h1><p>إستخرج · صوّر الكود · حوّل لملف Texte</p>
-    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.6 · 2026-08-24</span></p></div>
+    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.7 · 2026-08-24</span></p></div>
   </div>
 
   <!-- Batches: exported files list (shown near the top) -->
@@ -278,7 +278,12 @@
           <button class="btn btn-ghost small" id="assignExisting" style="margin:0;width:auto;padding:12px 14px">أضف</button>
         </div>
         <div class="hint" id="selCount" style="margin:8px 0 0">مختار: 0</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-ghost small" id="selectAll" style="margin:0;flex:1;padding:10px">✓ تحديد الكل</button>
+          <button class="btn btn-ghost small" id="selectNone" style="margin:0;flex:1;padding:10px">إلغاء التحديد</button>
+        </div>
       </div>
+      <div class="hint" id="galleryCount" style="margin:0 0 8px;text-align:center"></div>
       <div id="glist"></div>
       <button class="btn btn-danger" id="delBatch" style="display:none">مسح أكواد هذه الدفعة (تبقى الصور)</button>
       <button class="btn btn-danger" id="clearImgs">مسح كل الصور المحفوظة</button>
@@ -388,7 +393,10 @@
       const v=list[i];
       const row=document.createElement("div"); row.className="crow";
       const bad=(L&&v.length!==L);
-      const code=document.createElement("span"); code.className="cc"+(bad?" bad":""); code.textContent=v;
+      const code=document.createElement("span"); code.className="cc"+(bad?" bad":"");
+      const bs=batchesOfCode(v);
+      if(bs.length){ code.innerHTML=v+' <span style="font-size:10px;color:var(--muted)">📦 '+bs[0]+'</span>'; }
+      else code.textContent=v;
       const edit=document.createElement("button"); edit.className="ic-btn"; edit.textContent="✏️"; edit.title="تعديل";
       edit.addEventListener("click",()=>editCode(i));
       const del=document.createElement("button"); del.className="ic-btn"; del.textContent="🗑"; del.title="حذف";
@@ -802,6 +810,7 @@
     if(cur && [...batchSel.options].some(o=>o.value===cur)) batchSel.value=cur;
   }
   function codeInAnyBatch(c){ for(const b of batches){ if(b.codes && b.codes.indexOf(c)!==-1) return true; } return false; }
+  function batchesOfCode(c){ const out=[]; for(const b of batches){ if(b.codes && b.codes.indexOf(c)!==-1) out.push(b.name); } return out; }
   function codesForView(){
     const sel=batchSel.value;
     if(sel==="__none__") return Object.keys(codeImages).filter(c=>!codeInAnyBatch(c));
@@ -821,6 +830,7 @@
     $("classifyBar").style.display="block"; fillAssignSel(); updateSelCount();
     const q=(gsearch.value||"").replace(/\D/g,"");
     const codes=codesForView().filter(c=>!q||c.indexOf(q)!==-1);
+    const gc=$("galleryCount"); if(gc) gc.textContent="📷 "+codes.length+" صورة"+(q?" (نتيجة البحث)":"");
     glist.innerHTML="";
     if(!codes.length){ glist.innerHTML='<p class="hint">ما كاش صور'+(q?" لهاذ البحث":"")+'.</p>'; return; }
     for(const c of codes){
@@ -867,6 +877,13 @@
   galleryBtn.addEventListener("click",()=>{ galleryBox.classList.toggle("on"); if(galleryBox.classList.contains("on")) refreshGallery(); });
   gsearch.addEventListener("input",refreshGallery);
   batchSel.addEventListener("change",refreshGallery);
+  $("selectAll").addEventListener("click",function(){
+    const q=(gsearch.value||"").replace(/\D/g,"");
+    const codes=codesForView().filter(c=>!q||c.indexOf(q)!==-1);
+    for(const c of codes) selectedImgs.add(c);
+    refreshGallery();
+  });
+  $("selectNone").addEventListener("click",function(){ selectedImgs.clear(); refreshGallery(); });
   delBatchBtn.addEventListener("click",function(){
     const sel=batchSel.value; if(!sel||sel==="__all__"||!batches[+sel]) return;
     const b=batches[+sel];
@@ -926,7 +943,9 @@
       const row=document.createElement("div"); row.className="grow";
       const img=document.createElement("img"); img.src=codeImages[c]; img.alt=c;
       img.addEventListener("click",()=>{ lbimg.src=codeImages[c]; lbcode.textContent=c; lightbox.classList.add("on"); });
-      const span=document.createElement("div"); span.className="gc"; span.textContent=c;
+      const span=document.createElement("div"); span.className="gc";
+      const bs=batchesOfCode(c);
+      span.innerHTML=c+'<br><span style="font-size:11px;color:var(--muted)">'+(bs.length?("📦 "+bs.join(" · ")):"بلا دفعة")+'</span>';
       const edit=document.createElement("button"); edit.className="ic-btn"; edit.textContent="✏️"; edit.title="صحّح هذا الكود";
       edit.addEventListener("click",()=>{
         const nv=prompt("صحّح الكود:",c); if(nv==null) return;
