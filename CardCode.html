@@ -144,7 +144,7 @@
   <div class="brand">
     <div class="logo">C</div>
     <div><h1>Card Code</h1><p>إستخرج · صوّر الكود · حوّل لملف Texte</p>
-    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.7 · 2026-08-24</span></p></div>
+    <p style="margin:3px 0 0"><span style="display:inline-block;background:rgba(47,214,166,.15);border:1px solid var(--line);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:999px">v1.8 · 2026-08-25</span></p></div>
   </div>
 
   <!-- Batches: exported files list (shown near the top) -->
@@ -342,21 +342,53 @@
   const CODES_KEY="cardcode_codes_v1";
   try{ const s=JSON.parse(localStorage.getItem(CODES_KEY)||"[]"); if(Array.isArray(s)) rawCodes=s.map(String); }catch(_){}
   function saveCodes(){ try{ localStorage.setItem(CODES_KEY, JSON.stringify(rawCodes)); }catch(_){} }
-  const codeImages={};   // code -> dataURL (photo of the scanned code)
-  const IMG_KEY="cardcode_imgs_v1";
+  const codeImages={};   // in-memory cache: code -> dataURL (photo). Persisted in IndexedDB.
+  const IMG_KEY="cardcode_imgs_v1"; // legacy localStorage key (for migration only)
   let batches=[];        // [{name, ts, codes:[]}] — one per export
   const BATCH_KEY="cardcode_batches_v1";
   try{ const b=JSON.parse(localStorage.getItem(BATCH_KEY)||"[]"); if(Array.isArray(b)) batches=b; }catch(_){}
   function saveBatches(){ try{ localStorage.setItem(BATCH_KEY, JSON.stringify(batches)); }catch(_){} }
-  try{ const saved=JSON.parse(localStorage.getItem(IMG_KEY)||"{}"); if(saved&&typeof saved==="object") Object.assign(codeImages,saved); }catch(_){}
-  function saveImages(){
-    try{ localStorage.setItem(IMG_KEY, JSON.stringify(codeImages)); }
-    catch(_){
-      // storage full: drop the oldest entries and retry
-      const keys=Object.keys(codeImages);
-      for(let i=0;i<keys.length && i<Math.ceil(keys.length/2);i++) delete codeImages[keys[i]];
-      try{ localStorage.setItem(IMG_KEY, JSON.stringify(codeImages)); }catch(e){}
-    }
+
+  // ---- IndexedDB image store (holds thousands of images, no 5MB limit) ----
+  let idb=null;
+  function idbOpen(){
+    return new Promise((res)=>{
+      try{
+        const rq=indexedDB.open("cardcode_db",1);
+        rq.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains("images")) db.createObjectStore("images"); };
+        rq.onsuccess=e=>{ idb=e.target.result; res(idb); };
+        rq.onerror=()=>res(null);
+      }catch(_){ res(null); }
+    });
+  }
+  function idbPut(code,data){ try{ if(!idb)return; const tx=idb.transaction("images","readwrite"); tx.objectStore("images").put(data,code); }catch(_){} }
+  function idbDel(code){ try{ if(!idb)return; const tx=idb.transaction("images","readwrite"); tx.objectStore("images").delete(code); }catch(_){} }
+  function idbClear(){ try{ if(!idb)return; const tx=idb.transaction("images","readwrite"); tx.objectStore("images").clear(); }catch(_){} }
+  function idbLoadAll(){
+    return new Promise((res)=>{
+      try{
+        if(!idb) return res();
+        const tx=idb.transaction("images","readonly"); const st=tx.objectStore("images");
+        const keys=st.getAllKeys(), vals=st.getAll();
+        tx.oncomplete=()=>{ const ks=keys.result||[], vs=vals.result||[]; for(let i=0;i<ks.length;i++) codeImages[ks[i]]=vs[i]; res(); };
+        tx.onerror=()=>res();
+      }catch(_){ res(); }
+    });
+  }
+  // image API used across the app (memory + IDB)
+  function putImage(code,data){ codeImages[code]=data; idbPut(code,data); }
+  function removeImage(code){ delete codeImages[code]; idbDel(code); }
+  function clearImages(){ for(const k in codeImages) delete codeImages[k]; idbClear(); }
+  function saveImages(){ /* kept for compatibility: per-item writes handle persistence now */ }
+  // migrate old localStorage images into IndexedDB once, then free localStorage
+  async function migrateLegacyImages(){
+    try{
+      const raw=localStorage.getItem(IMG_KEY); if(!raw) return;
+      const old=JSON.parse(raw); if(old&&typeof old==="object"){
+        for(const k in old){ if(!codeImages[k]){ putImage(k,old[k]); } }
+      }
+      localStorage.removeItem(IMG_KEY); // free the 5MB slot
+    }catch(_){}
   }
   const dedupEl=$("dedup"), validateEl=$("validate"), expLenEl=$("expLen");
   const countEl=$("count"), dupEl=$("dupCount"), badEl=$("badCount");
@@ -413,13 +445,13 @@
     const clean=String(nv).replace(/\s+/g,"");
     if(!/^\d+$/.test(clean)){ alert("لازم أرقام برك."); return; }
     if(clean===cur) return;
-    if(codeImages[cur]){ codeImages[clean]=codeImages[cur]; if(clean!==cur) delete codeImages[cur]; saveImages(); }
+    if(codeImages[cur]){ putImage(clean,codeImages[cur]); if(clean!==cur) removeImage(cur); }
     const nl=finalCodes.slice(); nl[i]=clean; rawCodes=nl; saveCodes(); render();
   }
   function deleteCode(i){
     const cur=finalCodes[i];
     const nl=finalCodes.slice(); nl.splice(i,1); rawCodes=nl; saveCodes();
-    if(cur&&codeImages[cur]){ delete codeImages[cur]; saveImages(); }
+    if(cur&&codeImages[cur]){ removeImage(cur); }
     render();
   }
   function addCodes(arr){
@@ -637,7 +669,7 @@
     const v=codeInput.value.replace(/\s+/g,"");
     if(!/^\d+$/.test(v)){ show(codeWarn,"الكود فارغ ولا فيه حروف — صحّحو."); return; }
     addCodes([v]);
-    if(thumbEl.src && thumbEl.src.indexOf("data:")===0){ codeImages[v]=thumbEl.src; saveImages(); refreshGallery(); }
+    if(thumbEl.src && thumbEl.src.indexOf("data:")===0){ putImage(v,thumbEl.src); refreshGallery(); }
     backToShot();
     beep();
     if(navigator.vibrate) navigator.vibrate(50);
@@ -668,7 +700,7 @@
           if(pendCount>=2){ // confirmed by 2 identical reads
             autoSeen.add(txt);
             const img=cropGuide().toDataURL("image/jpeg",0.7);
-            addCodes([txt]); codeImages[txt]=img; saveImages(); refreshGallery();
+            addCodes([txt]); putImage(txt,img); refreshGallery();
             flashEl.classList.remove("hit"); void flashEl.offsetWidth; flashEl.classList.add("hit");
             beep(); try{ if(navigator.vibrate) navigator.vibrate(50); }catch(_){}
             autoStatus("✓ زيد: "+txt);
@@ -842,7 +874,7 @@
       const span=document.createElement("div"); span.className="gc"; span.textContent=c;
       const del=document.createElement("button"); del.className="ic-btn"; del.textContent="🗑"; del.title="حذف الصورة والكود";
       del.addEventListener("click",()=>{
-        delete codeImages[c]; saveImages(); selectedImgs.delete(c);
+        removeImage(c); selectedImgs.delete(c);
         rawCodes=rawCodes.filter(x=>x!==c); saveCodes();
         render(); refreshGallery();
       });
@@ -950,7 +982,7 @@
       edit.addEventListener("click",()=>{
         const nv=prompt("صحّح الكود:",c); if(nv==null) return;
         const cl=String(nv).replace(/\s+/g,""); if(!/^\d+$/.test(cl)){ alert("أرقام برك."); return; }
-        if(cl!==c){ codeImages[cl]=codeImages[c]; delete codeImages[c]; saveImages();
+        if(cl!==c){ putImage(cl,codeImages[c]); removeImage(c);
           const i=rawCodes.indexOf(c); if(i!==-1){ rawCodes[i]=cl; saveCodes(); render(); } }
         doLookup(); refreshGallery();
       });
@@ -961,12 +993,19 @@
   $("lbclose").addEventListener("click",()=>lightbox.classList.remove("on"));
   lightbox.addEventListener("click",e=>{ if(e.target===lightbox) lightbox.classList.remove("on"); });
   $("clearImgs").addEventListener("click",function(){
-    for(const k in codeImages) delete codeImages[k];
-    saveImages(); try{ autoSeen.clear(); }catch(_){} refreshGallery(); galleryBox.classList.remove("on");
+    clearImages(); try{ autoSeen.clear(); }catch(_){} refreshGallery(); galleryBox.classList.remove("on");
   });
-  updateGalleryBtn();
-  renderBatches();
-
+  // ---- startup ----
+  (async function init(){
+    render();                    // show persisted codes right away
+    renderBatches();
+    updateGalleryBtn();
+    await idbOpen();             // open IndexedDB
+    await idbLoadAll();          // load saved images into memory
+    await migrateLegacyImages(); // import old localStorage images once, then free the slot
+    updateGalleryBtn();
+    if(galleryBox.classList.contains("on")) refreshGallery();
+  })();
   $("clear").addEventListener("click",function(){
     rawCodes=[]; saveCodes(); render(); resultCard.classList.remove("show"); hide(okEl);
     try{ autoSeen.clear(); }catch(_){}
@@ -1006,8 +1045,7 @@
         let addImg=0, addCode=0, addBatch=0;
         // merge images
         if(data.images&&typeof data.images==="object"){
-          for(const k in data.images){ if(!codeImages[k]){ codeImages[k]=data.images[k]; addImg++; } }
-          saveImages();
+          for(const k in data.images){ if(!codeImages[k]){ putImage(k,data.images[k]); addImg++; } }
         }
         // merge codes (avoid duplicates)
         if(Array.isArray(data.codes)){
