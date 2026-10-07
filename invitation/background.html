@@ -1,0 +1,96 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;width:1748px;height:2480px;overflow:hidden}</style></head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" width="1748" height="2480" viewBox="0 0 1748 2480">
+  <defs>
+    <radialGradient id="paper" cx="50%" cy="45%" r="75%">
+      <stop offset="0" stop-color="#fffdf7"/>
+      <stop offset="0.7" stop-color="#fbf5e6"/>
+      <stop offset="1" stop-color="#f1e5c6"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8a6a1f"/>
+      <stop offset="0.35" stop-color="#e6c766"/>
+      <stop offset="0.55" stop-color="#b8902f"/>
+      <stop offset="0.8" stop-color="#f0d98a"/>
+      <stop offset="1" stop-color="#8a6a1f"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b5a3a"/>
+      <stop offset="1" stop-color="#063d27"/>
+    </linearGradient>
+    <!-- 8-point star (rub el hizb) -->
+    <g id="star">
+      <rect x="-50" y="-50" width="100" height="100"/>
+      <rect x="-50" y="-50" width="100" height="100" transform="rotate(45)"/>
+    </g>
+    <pattern id="tile" width="220" height="220" patternUnits="userSpaceOnUse">
+      <g transform="translate(110 110)" fill="none" stroke="#0b5a3a" stroke-width="3">
+        <use href="#star"/>
+        <circle r="22"/>
+      </g>
+      <g fill="none" stroke="#b8902f" stroke-width="2">
+        <use href="#star" transform="translate(0 0) scale(.45)"/>
+        <use href="#star" transform="translate(220 0) scale(.45)"/>
+        <use href="#star" transform="translate(0 220) scale(.45)"/>
+        <use href="#star" transform="translate(220 220) scale(.45)"/>
+      </g>
+    </pattern>
+    <g id="cornerOrn">
+      <!-- quarter arabesque in the top-right corner, origin at corner -->
+      <path d="M0 0 H-330 Q-250 40 -230 120 Q-150 90 -120 150 Q-90 210 -150 230 Q-40 250 0 330 Z" fill="url(#green)"/>
+      <path d="M-300 18 Q-232 52 -216 132 Q-148 108 -122 160 Q-100 206 -140 226 Q-46 246 -18 300" fill="none" stroke="url(#gold)" stroke-width="7"/>
+      <g transform="translate(-95 95)">
+        <use href="#star" transform="scale(.75)" fill="url(#gold)"/>
+        <use href="#star" transform="scale(.5)" fill="#0b5a3a"/>
+        <circle r="14" fill="url(#gold)"/>
+      </g>
+      <circle cx="-262" cy="36" r="9" fill="url(#gold)"/>
+      <circle cx="-36" cy="262" r="9" fill="url(#gold)"/>
+    </g>
+  </defs>
+
+  <!-- paper -->
+  <rect width="1748" height="2480" fill="url(#paper)"/>
+  <!-- faint geometric watermark in the centre -->
+  <g opacity="0.06">
+    <rect x="160" y="160" width="1428" height="2160" fill="url(#tile)"/>
+  </g>
+  <!-- soft vignette over the watermark so the reading area stays clean -->
+  <radialGradient id="clear" cx="50%" cy="50%" r="50%">
+    <stop offset="0" stop-color="#fffdf7" stop-opacity="0.85"/>
+    <stop offset="1" stop-color="#fffdf7" stop-opacity="0"/>
+  </radialGradient>
+  <ellipse cx="874" cy="1300" rx="760" ry="1000" fill="url(#clear)"/>
+
+  <!-- big faint star behind the title -->
+  <g transform="translate(874 640)" opacity="0.10">
+    <use href="#star" transform="scale(3.6)" fill="none" stroke="#b8902f" stroke-width="2"/>
+    <use href="#star" transform="scale(2.6) rotate(22.5)" fill="none" stroke="#0b5a3a" stroke-width="2"/>
+  </g>
+
+  <!-- frame: green band + gold lines -->
+  <rect x="40" y="40" width="1668" height="2400" rx="28" fill="none" stroke="url(#green)" stroke-width="34"/>
+  <rect x="78" y="78" width="1592" height="2324" rx="16" fill="none" stroke="url(#gold)" stroke-width="8"/>
+  <rect x="98" y="98" width="1552" height="2284" rx="10" fill="none" stroke="#0b5a3a" stroke-width="2.5"/>
+  <!-- dotted gold inner rule -->
+  <rect x="116" y="116" width="1516" height="2248" rx="6" fill="none" stroke="#b8902f" stroke-width="3" stroke-dasharray="2 14" stroke-linecap="round"/>
+
+  <!-- corners -->
+  <use href="#cornerOrn" transform="translate(1670 78)"/>
+  <use href="#cornerOrn" transform="translate(78 78) scale(-1 1)"/>
+  <use href="#cornerOrn" transform="translate(1670 2402) scale(1 -1)"/>
+  <use href="#cornerOrn" transform="translate(78 2402) scale(-1 -1)"/>
+
+  <!-- mid-edge ornaments -->
+  <g transform="translate(874 78)"><use href="#star" transform="scale(.42)" fill="url(#gold)" stroke="#0b5a3a" stroke-width="4"/></g>
+  <g transform="translate(874 2402)"><use href="#star" transform="scale(.42)" fill="url(#gold)" stroke="#0b5a3a" stroke-width="4"/></g>
+  <g transform="translate(78 1240)"><use href="#star" transform="scale(.42)" fill="url(#gold)" stroke="#0b5a3a" stroke-width="4"/></g>
+  <g transform="translate(1670 1240)"><use href="#star" transform="scale(.42)" fill="url(#gold)" stroke="#0b5a3a" stroke-width="4"/></g>
+
+  <!-- bottom green wave -->
+  <path d="M116 2364 V2250 Q437 2170 874 2250 Q1311 2330 1632 2250 V2364 Z" fill="#0b5a3a" opacity="0.10"/>
+  <path d="M116 2290 Q437 2210 874 2290 Q1311 2370 1632 2290" fill="none" stroke="url(#gold)" stroke-width="4" opacity="0.7"/>
+</svg>
+</body></html>
