@@ -1,0 +1,128 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;width:1748px;height:2480px;overflow:hidden;background:#FFE7BF}
+  svg{display:block}
+  .title{font-family:'Lalezar',sans-serif}
+</style></head>
+<body>
+<svg width="1748" height="2480" viewBox="0 0 1748 2480">
+  <defs>
+    <g id="burst">
+      <polygon points="0,-100 18,-48 62,-78 44,-28 98,-22 52,6 86,48 34,40 30,96 0,52 -30,96 -34,40 -86,48 -52,6 -98,-22 -44,-28 -62,-78 -18,-48" fill="#F6B71C"/>
+      <polygon points="0,-46 9,-22 30,-36 21,-12 46,-10 24,3 40,22 16,18 14,44 0,24 -14,44 -16,18 -40,22 -24,3 -46,-10 -21,-12 -30,-36 -9,-22" fill="#D9452B"/>
+    </g>
+    <g id="basketball">
+      <circle r="100" fill="#D9452B"/>
+      <g fill="none" stroke="#1F1A17" stroke-width="7">
+        <circle r="100"/>
+        <path d="M0 -100V100M-100 0H100"/>
+        <path d="M-70 -71C-30 -30 -30 30 -70 71M70 -71C30 -30 30 30 70 71"/>
+      </g>
+    </g>
+    <g id="volleyball">
+      <circle r="100" fill="#F6B71C"/>
+      <g fill="none" stroke="#2E8B3E" stroke-width="7">
+        <circle r="100"/>
+        <path d="M-8 -99C40 -40 40 30 0 0C-40 30 -90 30 -96 26"/>
+        <path d="M0 0C60 20 90 60 86 50"/>
+        <path d="M-60 -80C-30 -40 -10 -10 0 0"/>
+        <path d="M0 0C-10 50 10 90 30 96"/>
+      </g>
+    </g>
+    <g id="soccer">
+      <circle r="100" fill="#fff"/>
+      <clipPath id="ballclip"><circle r="100"/></clipPath>
+      <g clip-path="url(#ballclip)" fill="#1F1A17">
+        <polygon points="0,-30 28,-9 18,24 -18,24 -28,-9"/>
+        <polygon points="0,-118 28,-97 18,-64 -18,-64 -28,-97"/>
+        <polygon points="0,-118 28,-97 18,-64 -18,-64 -28,-97" transform="rotate(72)"/>
+        <polygon points="0,-118 28,-97 18,-64 -18,-64 -28,-97" transform="rotate(144)"/>
+        <polygon points="0,-118 28,-97 18,-64 -18,-64 -28,-97" transform="rotate(216)"/>
+        <polygon points="0,-118 28,-97 18,-64 -18,-64 -28,-97" transform="rotate(288)"/>
+      </g>
+      <g stroke="#1F1A17" stroke-width="5">
+        <line x1="0" y1="-30" x2="0" y2="-64"/>
+        <line x1="0" y1="-30" x2="0" y2="-64" transform="rotate(72)"/>
+        <line x1="0" y1="-30" x2="0" y2="-64" transform="rotate(144)"/>
+        <line x1="0" y1="-30" x2="0" y2="-64" transform="rotate(216)"/>
+        <line x1="0" y1="-30" x2="0" y2="-64" transform="rotate(288)"/>
+      </g>
+      <circle r="100" fill="none" stroke="#1F1A17" stroke-width="7"/>
+    </g>
+    <pattern id="strings" width="22" height="22" patternUnits="userSpaceOnUse">
+      <path d="M0 0H22M0 0V22" stroke="#1F1A17" stroke-width="3"/>
+    </pattern>
+    <g id="racket">
+      <!-- head centred at 0,0, handle down -->
+      <clipPath id="headclip"><ellipse rx="92" ry="120"/></clipPath>
+      <ellipse rx="92" ry="120" fill="#FFF6E4"/>
+      <rect x="-100" y="-130" width="200" height="260" fill="url(#strings)" clip-path="url(#headclip)" opacity=".85"/>
+      <path d="M-26 118L-12 170H12L26 118" fill="none" stroke="currentColor" stroke-width="14"/>
+      <ellipse rx="92" ry="120" fill="none" stroke="currentColor" stroke-width="20"/>
+      <rect x="-15" y="166" width="30" height="80" fill="currentColor"/>
+      <rect x="-18" y="240" width="36" height="120" rx="8" fill="#1F1A17"/>
+    </g>
+    <g id="tennisball">
+      <circle r="40" fill="#2E8B3E"/>
+      <path d="M-34 -22C-10 -4 -10 18 -30 30M34 -22C10 -4 10 18 30 30" fill="none" stroke="#FFE7BF" stroke-width="5"/>
+    </g>
+    <g id="shuttle">
+      <path d="M-34 -120L34 -120L18 0H-18Z" fill="#fff" stroke="#1F1A17" stroke-width="5"/>
+      <path d="M-12 -120L-6 0M12 -120L6 0M-34 -80H34" stroke="#1F1A17" stroke-width="3" fill="none"/>
+      <path d="M-22 0H22A22 22 0 0 1 -22 0Z" fill="#D9452B" stroke="#1F1A17" stroke-width="4"/>
+      <path d="M-22 0A22 26 0 0 0 22 0" fill="#D9452B" stroke="#1F1A17" stroke-width="4"/>
+    </g>
+    <g id="trophy">
+      <path d="M-90 -140H90V-80C90 -10 50 30 0 40C-50 30 -90 -10 -90 -80Z" fill="#F6B71C" stroke="#1F1A17" stroke-width="7"/>
+      <path d="M-90 -120H-140V-90C-140 -50 -110 -30 -80 -30M90 -120H140V-90C140 -50 110 -30 80 -30" fill="none" stroke="#1F1A17" stroke-width="10"/>
+      <rect x="-16" y="40" width="32" height="50" fill="#F6B71C" stroke="#1F1A17" stroke-width="6"/>
+      <rect x="-70" y="90" width="140" height="40" rx="6" fill="#D9452B" stroke="#1F1A17" stroke-width="6"/>
+      <rect x="-90" y="130" width="180" height="30" rx="6" fill="#1F1A17"/>
+      <polygon points="0,-112 9,-90 33,-90 14,-76 21,-53 0,-67 -21,-53 -14,-76 -33,-90 -9,-90" fill="#fff"/>
+    </g>
+    <g id="medal">
+      <path d="M-40 -150L-10 -40H10L40 -150Z" fill="#2E8B3E" stroke="#1F1A17" stroke-width="5"/>
+      <path d="M-40 -150L0 -40L40 -150" fill="none" stroke="#D9452B" stroke-width="10"/>
+      <circle r="60" fill="#F6B71C" stroke="#1F1A17" stroke-width="7"/>
+      <circle r="38" fill="none" stroke="#1F1A17" stroke-width="4"/>
+    </g>
+  </defs>
+
+  <!-- confetti -->
+  <g fill="#D9452B" opacity=".55">
+    <circle cx="420" cy="900" r="10"/><circle cx="1330" cy="760" r="8"/><circle cx="300" cy="1700" r="9"/>
+    <circle cx="1460" cy="1900" r="10"/><circle cx="560" cy="2050" r="7"/><circle cx="1200" cy="2080" r="8"/>
+  </g>
+  <g fill="#2E8B3E" opacity=".55">
+    <rect x="1380" y="1200" width="16" height="16" transform="rotate(30 1388 1208)"/>
+    <rect x="330" y="1240" width="16" height="16" transform="rotate(20 338 1248)"/>
+    <rect x="980" y="2110" width="14" height="14" transform="rotate(45 987 2117)"/>
+  </g>
+
+  <!-- top-left: basketball -->
+  <use href="#basketball" transform="translate(110 120) scale(2.5) rotate(-15)"/>
+  <!-- top-right: tennis racket + ball -->
+  <use href="#racket" color="#D9452B" transform="translate(1600 230) rotate(-140) scale(1.25)"/>
+  <use href="#tennisball" transform="translate(1390 470) scale(1.1)"/>
+  <!-- left: burst + soccer ball -->
+  <use href="#burst" transform="translate(70 720) scale(1.7)"/>
+  <use href="#soccer" transform="translate(70 1300) scale(2.3) rotate(10)"/>
+  <!-- right: volleyball + burst -->
+  <use href="#volleyball" transform="translate(1690 1040) scale(2.4)"/>
+  <use href="#burst" transform="translate(1710 1640) scale(1.6) rotate(20)"/>
+  <!-- bottom-left: badminton racket + shuttle -->
+  <use href="#racket" color="#2E8B3E" transform="translate(250 2140) rotate(40) scale(1.25)"/>
+  <use href="#shuttle" transform="translate(110 1980) rotate(-30) scale(1.1)"/>
+  <!-- bottom-right: trophy + medal -->
+  <use href="#trophy" transform="translate(1460 2230) scale(1.55)"/>
+  <use href="#medal" transform="translate(1180 2350) scale(1.0) rotate(-12)"/>
+  <!-- bottom-centre burst -->
+  <use href="#burst" transform="translate(700 2470) scale(2.2)"/>
+
+  <!-- baked title -->
+  <text class="title" x="874" y="730" text-anchor="middle" font-size="300" fill="#F6B71C" direction="rtl" dx="10" dy="10">دعــوة</text>
+  <text class="title" x="874" y="730" text-anchor="middle" font-size="300" fill="#C8362B" direction="rtl">دعــوة</text>
+</svg>
+</body></html>

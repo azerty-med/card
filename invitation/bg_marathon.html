@@ -1,0 +1,71 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  html,body{margin:0;width:1748px;height:2480px;overflow:hidden;background:#1C1A17}
+  .stage{position:relative;width:1748px;height:2480px;overflow:hidden}
+  svg{position:absolute;inset:0}
+  .ic{position:absolute;font-family:'Material Icons';line-height:1;-webkit-font-feature-settings:'liga';font-feature-settings:'liga';direction:ltr}
+  .t{position:absolute;left:0;right:0;text-align:center;font-family:'Cairo',sans-serif;font-weight:900;direction:rtl;transform:skewX(-8deg)}
+</style></head>
+<body><div class="stage">
+<svg width="1748" height="2480" viewBox="0 0 1748 2480">
+  <defs>
+    <radialGradient id="glow" cx="65%" cy="18%" r="65%">
+      <stop offset="0" stop-color="#5B5A2E"/>
+      <stop offset=".45" stop-color="#34331F"/>
+      <stop offset="1" stop-color="#1C1A17"/>
+    </radialGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1C1A17" stop-opacity="0"/>
+      <stop offset="1" stop-color="#1C1A17" stop-opacity="1"/>
+    </linearGradient>
+    <linearGradient id="lime" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F2D64B"/>
+      <stop offset="1" stop-color="#7FA82E"/>
+    </linearGradient>
+    <linearGradient id="chev" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F2D64B"/>
+      <stop offset="1" stop-color="#9DBB34"/>
+    </linearGradient>
+  </defs>
+  <rect width="1748" height="1400" fill="url(#glow)"/>
+  <!-- motion streaks -->
+  <g stroke="#F2D64B" stroke-opacity=".10" stroke-width="6" stroke-linecap="round">
+    <line x1="80" y1="300" x2="700" y2="300"/><line x1="200" y1="380" x2="900" y2="380"/>
+    <line x1="60" y1="980" x2="560" y2="980"/><line x1="1100" y1="1050" x2="1680" y2="1050"/>
+  </g>
+</svg>
+
+<!-- crowd of runners (silhouettes) -->
+<span class="ic" style="left:860px;top:60px;font-size:900px;color:#7C7A45;opacity:.55">directions_run</span>
+<span class="ic" style="left:380px;top:200px;font-size:620px;color:#5E5C36;opacity:.55">directions_run</span>
+<span class="ic" style="left:-80px;top:120px;font-size:520px;color:#4A4930;opacity:.6">directions_run</span>
+<span class="ic" style="left:1300px;top:500px;font-size:460px;color:#4A4930;opacity:.6">sports_soccer</span>
+<span class="ic" style="left:40px;top:700px;font-size:380px;color:#3F3E2A;opacity:.7">sports_basketball</span>
+
+<svg width="1748" height="2480" viewBox="0 0 1748 2480">
+  <rect y="700" width="1748" height="700" fill="url(#fade)"/>
+  <!-- lime arcs like the reference -->
+  <circle cx="1640" cy="40" r="300" fill="url(#lime)" opacity=".85"/>
+  <circle cx="1640" cy="40" r="210" fill="#1C1A17" opacity=".0"/>
+  <path d="M1748 1120A150 150 0 0 0 1598 1270" fill="none" stroke="url(#lime)" stroke-width="56" opacity=".9"/>
+  <!-- chevrons -->
+  <g transform="translate(1380 770) scale(.7)" fill="url(#chev)">
+    <polygon points="0,0 70,0 140,75 70,150 0,150 70,75"/>
+    <polygon points="110,0 180,0 250,75 180,150 110,150 180,75" opacity=".75"/>
+    <polygon points="220,0 290,0 360,75 290,150 220,150 290,75" opacity=".5"/>
+  </g>
+  <!-- side triangles -->
+  <polygon points="0,1900 120,2020 0,2140" fill="url(#lime)"/>
+  <polygon points="1748,1900 1628,2020 1748,2140" fill="url(#lime)"/>
+  <!-- thin outline accents -->
+  <circle cx="140" cy="2380" r="160" fill="none" stroke="#F2D64B" stroke-opacity=".25" stroke-width="6"/>
+  <circle cx="1600" cy="2420" r="120" fill="none" stroke="#9DBB34" stroke-opacity=".25" stroke-width="6"/>
+</svg>
+
+<!-- baked headline -->
+<div class="t" style="top:330px;font-size:330px;color:#fff;line-height:1">دعــوة</div>
+<div class="t" style="top:705px;font-size:120px;color:#F2D64B;line-height:1">12 أكتوبر 2026</div>
+</div></body></html>
