@@ -1,0 +1,95 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  html,body{margin:0;width:1748px;height:2480px;overflow:hidden;background:#fff}
+  .stage{position:relative;width:1748px;height:2480px;overflow:hidden}
+  svg{position:absolute;inset:0}
+  .ic{position:absolute;font-family:'Material Icons';font-weight:normal;font-style:normal;line-height:1;
+      letter-spacing:normal;text-transform:none;white-space:nowrap;direction:ltr;-webkit-font-feature-settings:'liga';font-feature-settings:'liga'}
+  .row{position:absolute;left:0;right:0;display:flex;justify-content:center;gap:58px}
+  .row .ic{position:static;font-size:92px;color:#fff}
+  .chip{width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);border:3px solid rgba(255,255,255,.35);display:grid;place-items:center}
+</style></head>
+<body><div class="stage">
+<svg width="1748" height="2480" viewBox="0 0 1748 2480">
+  <defs>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A1E3F"/>
+      <stop offset="0.6" stop-color="#0C4A6E"/>
+      <stop offset="1" stop-color="#0F8A94"/>
+    </linearGradient>
+    <linearGradient id="band2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0F8A94"/>
+      <stop offset="0.5" stop-color="#0C4A6E"/>
+      <stop offset="1" stop-color="#0A1E3F"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F7931E"/>
+      <stop offset="1" stop-color="#FFB547"/>
+    </linearGradient>
+    <clipPath id="topClip"><path d="M0 0H1748V470C1360 610 760 450 0 600Z"/></clipPath>
+    <clipPath id="botClip"><path d="M0 2480H1748V2160C1300 2060 640 2250 0 2140Z"/></clipPath>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="3" fill="#0C4A6E"/></pattern>
+  </defs>
+
+  <!-- top band -->
+  <path d="M0 0H1748V470C1360 610 760 450 0 600Z" fill="url(#band)"/>
+  <g clip-path="url(#topClip)" fill="none" stroke="#fff" stroke-opacity=".13" stroke-width="4">
+    <!-- running-track lanes sweeping across the band -->
+    <ellipse cx="1500" cy="760" rx="900" ry="560"/>
+    <ellipse cx="1500" cy="760" rx="980" ry="620"/>
+    <ellipse cx="1500" cy="760" rx="1060" ry="680"/>
+    <ellipse cx="1500" cy="760" rx="1140" ry="740"/>
+    <ellipse cx="1500" cy="760" rx="1220" ry="800"/>
+  </g>
+  <g clip-path="url(#topClip)">
+    <rect x="1320" y="40" width="380" height="260" fill="url(#dots)" opacity=".18"/>
+  </g>
+  <!-- orange accent along the band edge -->
+  <path d="M0 628C760 478 1360 638 1748 498" fill="none" stroke="url(#orange)" stroke-width="16"/>
+  <path d="M0 662C760 512 1360 672 1748 532" fill="none" stroke="#0F8A94" stroke-width="5" opacity=".6"/>
+
+  <!-- quiet details in the reading area -->
+  <rect x="60" y="760" width="200" height="200" fill="url(#dots)" opacity=".07"/>
+  <rect x="1488" y="1500" width="200" height="200" fill="url(#dots)" opacity=".07"/>
+  <g fill="none" stroke="#0C4A6E" stroke-opacity=".05" stroke-width="5">
+    <ellipse cx="1748" cy="1900" rx="520" ry="300"/>
+    <ellipse cx="1748" cy="1900" rx="600" ry="360"/>
+    <ellipse cx="1748" cy="1900" rx="680" ry="420"/>
+  </g>
+  <!-- side accent bars -->
+  <rect x="0" y="900" width="14" height="520" fill="#F7931E"/>
+  <rect x="1734" y="1080" width="14" height="520" fill="#0F8A94"/>
+
+  <!-- bottom band -->
+  <path d="M0 2480H1748V2160C1300 2060 640 2250 0 2140Z" fill="url(#band2)"/>
+  <g clip-path="url(#botClip)" fill="none" stroke="#fff" stroke-opacity=".10" stroke-width="4">
+    <ellipse cx="200" cy="2700" rx="900" ry="420"/>
+    <ellipse cx="200" cy="2700" rx="980" ry="480"/>
+    <ellipse cx="200" cy="2700" rx="1060" ry="540"/>
+  </g>
+  <path d="M0 2120C640 2230 1300 2040 1748 2140" fill="none" stroke="url(#orange)" stroke-width="16"/>
+</svg>
+
+<!-- athlete silhouettes in the top band -->
+<span class="ic" style="left:40px;top:70px;font-size:440px;color:#fff;opacity:.16">directions_run</span>
+<span class="ic" style="left:1360px;top:250px;font-size:220px;color:#fff;opacity:.12;transform:rotate(-15deg)">sports_soccer</span>
+<span class="ic" style="left:1500px;top:-40px;font-size:260px;color:#fff;opacity:.10">sports_basketball</span>
+
+<!-- faint watermarks in the reading area -->
+<span class="ic" style="left:-60px;top:1560px;font-size:560px;color:#0C4A6E;opacity:.025">sports_handball</span>
+<span class="ic" style="left:1230px;top:700px;font-size:480px;color:#0C4A6E;opacity:.022">sports_gymnastics</span>
+
+<!-- sport icons in the bottom band -->
+<div class="row" style="top:2272px">
+  <div class="chip"><span class="ic">directions_run</span></div>
+  <div class="chip"><span class="ic">sports_soccer</span></div>
+  <div class="chip"><span class="ic">sports_basketball</span></div>
+  <div class="chip"><span class="ic">sports_handball</span></div>
+  <div class="chip"><span class="ic">sports_volleyball</span></div>
+  <div class="chip"><span class="ic">pool</span></div>
+  <div class="chip"><span class="ic">fitness_center</span></div>
+  <div class="chip"><span class="ic">emoji_events</span></div>
+</div>
+</div></body></html>
